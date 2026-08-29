@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "selected_arm": "uniform",
+  "attempt_id": "attempt-01",
   "expected_roi_count": 170,
   "hidden_external_labels_used": false,
   "probability_ensemble": "mean_of_five_fold_softmaxes",
@@ -17,6 +17,6 @@
   "submission_zip": {
     "bytes": 4326284,
     "sha256": "d13f2994c6764a1eab8359301bef23588b1ed8deb53f4370b56cbb4bf2c6e42c",
-    "redistribution": "excluded_pending_clearance"
+    "redistribution": "github_release_asset"
   }
 }

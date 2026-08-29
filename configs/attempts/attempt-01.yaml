@@ -1,0 +1,8 @@
+# Attempt 01: Virchow2 encoder with a lightweight segmentation decoder and uniform ROI sampling.
+run:
+  output_root: data/beetle/runs/attempt-01
+  tags: [beetle, virchow2, attempt-01]
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null

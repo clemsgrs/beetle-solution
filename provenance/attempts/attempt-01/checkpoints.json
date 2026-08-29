@@ -1,35 +1,35 @@
 {
   "schema_version": 1,
-  "arm": "uniform",
-  "redistribution": "excluded_pending_clearance",
+  "attempt_id": "attempt-01",
+  "redistribution": "github_release_asset",
   "checkpoints": [
     {
       "fold": 0,
-      "path": "artifacts/checkpoints/uniform/fold_0/best_model.pt",
+      "path": "fold_0/best_model.pt",
       "bytes": 18146165,
       "sha256": "06022490025970af464d9e718bf3c61c9fa533380dad2a8055863e457377044c"
     },
     {
       "fold": 1,
-      "path": "artifacts/checkpoints/uniform/fold_1/best_model.pt",
+      "path": "fold_1/best_model.pt",
       "bytes": 18146165,
       "sha256": "5966c01e62464ed898afe38322a80d7cc1bf7f10cc538724e36effe8f1a18e82"
     },
     {
       "fold": 2,
-      "path": "artifacts/checkpoints/uniform/fold_2/best_model.pt",
+      "path": "fold_2/best_model.pt",
       "bytes": 18146165,
       "sha256": "dceffd3756452ea2aa77c3dd6030b4ee6390d5d31ee6e6115b77b15e1162c68d"
     },
     {
       "fold": 3,
-      "path": "artifacts/checkpoints/uniform/fold_3/best_model.pt",
+      "path": "fold_3/best_model.pt",
       "bytes": 18146165,
       "sha256": "b3197c728b17eb850f101e6a6de89b4d1bf194d87dc1d40d285f41eb999398e9"
     },
     {
       "fold": 4,
-      "path": "artifacts/checkpoints/uniform/fold_4/best_model.pt",
+      "path": "fold_4/best_model.pt",
       "bytes": 18146165,
       "sha256": "5bfb29518e632fd476c179868a7e523ffcaa0eeb5c08a25cb188a04b89016869"
     }
