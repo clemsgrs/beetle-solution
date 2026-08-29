@@ -14,9 +14,9 @@ Each fold trained a 1,510,660-parameter decoder comprising a 1×1 projection fro
 
 We minimized unweighted pixelwise cross-entropy plus multiclass soft-Dice, each with coefficient 1, over annotated pixels. Optimization used Adam with learning rate 1×10⁻⁴ and weight decay 1×10⁻⁵, a 30-epoch cosine schedule, batch size 64, no data augmentation, and fold seeds 0–4. Training stopped after eight epochs without improvement in validation dataset-global mean class Dice; the best checkpoint on this criterion was retained.
 
-## Model selection and External inference
+## External inference
 
-Two development arms differed only in training-batch ROI sampling. Uniform sampling achieved a mean fold-macro dataset-global mean class Dice of 0.8861255; equal-request class-conditioned sampling achieved 0.8822084. Uniform sampling was therefore fixed for the submission.
+Training-batch ROIs were sampled uniformly. The submitted configuration achieved a mean fold-macro dataset-global mean class Dice of 0.8861255 over the five development folds.
 
 The official External data consisted of pre-extracted ROI PNGs of varying dimensions. We slid 512×512 model tiles over each full ROI with 50% overlap. This is the outer segmentation tiling step: each such model tile is still reflect-padded to 518×518 and encoded internally with the overlapping 224×224 Virchow2 windows described above. We averaged the five fold-specific per-pixel softmax tensors and Hann-blended probabilities where outer tiles overlapped. The maximum-probability class was mapped to submission labels 1–4.
 

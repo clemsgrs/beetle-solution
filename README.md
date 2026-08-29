@@ -6,11 +6,11 @@ The first attempt freezes [Virchow2](https://huggingface.co/paige-ai/Virchow2), 
 
 ## Attempts
 
-| Attempt | Config | Leaderboard overall Dice | Tag | Weights |
-|---|---|---|---|---|
-| uniform | `configs/attempts/uniform.yaml` | 0.9063 | — | — |
+| Attempt | Config | Dev Dice | Leaderboard overall Dice | Tag | Weights |
+|---|---|---|---|---|---|
+| uniform | `configs/attempts/uniform.yaml` | 0.8861 | 0.9063 | — | — |
 
-The score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Evidence for each attempt is in `provenance/attempts/<name>/`.
+Dev Dice is the mean dataset-global mean class Dice over the five development folds. The leaderboard score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Evidence for each attempt is in `provenance/attempts/<name>/`.
 
 ## Install
 
