@@ -23,6 +23,8 @@ uv run pytest -q
 
 Virchow2 is gated. Request access on its model page. Then download the exact revision named in `configs/base.yaml`.
 
+The `curate`, `extract`, and `train` commands run from a repository checkout: they read `configs/` and write `provenance/`. `infer` only needs a run directory, so it also works from a plain package install.
+
 ## Inference
 
 To reproduce a submission, you do not need to train. Download the attempt's release assets and arrange them as a run directory:

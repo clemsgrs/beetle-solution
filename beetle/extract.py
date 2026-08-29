@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from beetle.attempts import BASE_CONFIG, parse_set_overrides
+from beetle.attempts import BASE_CONFIG, parse_set_overrides, resolve_base_config
 from soma.pipeline import Pipeline
 
 
@@ -48,7 +48,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     from soma.config import load_config
 
-    config = load_config(args.config, overrides=parse_set_overrides(args.overrides))
+    config = load_config(
+        resolve_base_config(args.config), overrides=parse_set_overrides(args.overrides)
+    )
     extract_cache(config, args.work_dir)
     return 0
 
