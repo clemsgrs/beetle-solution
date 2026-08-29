@@ -29,11 +29,11 @@ from beetle.record import record_inference
 def load_fold_predictor(run_dir: Path):
     """Load the run's recipe, the frozen encoder, and all five fold decoders."""
     from soma.config import load_config
+    from soma.dense.live import build_live_segmentation_source
     from soma.dense.predict import (
         SlidingWindowSegmentationPredictor,
         build_live_segmentation_models,
     )
-    from soma.pipeline import Pipeline
 
     config = load_config(run_dir / "config.yaml")
     if config.decoder is None or config.task is None or config.encoder is None:
@@ -44,7 +44,7 @@ def load_fold_predictor(run_dir: Path):
     missing = [str(path) for path in checkpoints if not path.is_file()]
     if missing:
         raise FileNotFoundError(f"Missing fold checkpoints: {missing}")
-    source = Pipeline(config)._build_live_segmentation_source()
+    source = build_live_segmentation_source(config)
     models = build_live_segmentation_models(
         source,
         decoder_name=config.decoder.name,

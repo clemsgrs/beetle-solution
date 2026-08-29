@@ -2,3 +2,7 @@
 run:
   output_root: data/beetle/runs/uniform
   tags: [beetle, virchow2, uniform]
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null
