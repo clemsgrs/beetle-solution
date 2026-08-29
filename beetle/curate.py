@@ -1,6 +1,6 @@
-"""Curate the BEETLE development slides into Soma's unified segmentation Manifest.
+"""Curate the BEETLE development slides into soma's unified segmentation Manifest.
 
-One row per development WSI pairs the slide with its annotation raster; Soma samples
+One row per development WSI pairs the slide with its annotation raster; soma samples
 ROIs from these slides at train time. Splits preserve BEETLE's predefined patient
 folds: for fold ``k``, a slide whose ``validation_fold == k`` is ``test``,
 ``== (k+1) % n_folds`` is ``tune``, else ``train``.
@@ -30,7 +30,7 @@ _PATIENT_ID_PATTERNS = {
 }
 # Three TCGA slides ship at ~0.657 µm/px instead of the ~0.525 µm/px cohort spacing.
 # Their measured level-0 spacing is declared in the manifest (`spacing_at_level_0`)
-# so Soma reads them at native resolution instead of upsampling.
+# so soma reads them at native resolution instead of upsampling.
 _NATIVE_LEVEL_0_EXCEPTIONS = (
     "TCGA-OL-A66I-01Z-00-DX1.8CE9DCAB-98D3-4163-94AC-1557D86C1E25",
     "TCGA-OL-A66P-01Z-00-DX1.5ADD0D6D-37C6-4BC9-8C2B-64DB18BE99B3",
