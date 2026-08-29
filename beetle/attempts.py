@@ -1,4 +1,4 @@
-"""Resolve one attempt: base config + one attempt overlay, merged by Soma."""
+"""Resolve one attempt: base config + one attempt overlay, merged by soma."""
 
 from __future__ import annotations
 

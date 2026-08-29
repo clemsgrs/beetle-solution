@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it and the upstream works listed in THIRD_PARTY_NOTICES.md."
-title: "Virchow2-based BEETLE solution"
+title: "BEETLE solutions"
 type: software
 authors:
   - family-names: "Grisi"
