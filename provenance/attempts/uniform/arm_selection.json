@@ -1,0 +1,31 @@
+{
+  "arms": {
+    "class_conditioned": {
+      "fold_scores": [
+        0.8618407925361795,
+        0.8981431380601906,
+        0.8937147056519057,
+        0.909355140481645,
+        0.8479882950639244
+      ],
+      "mean": 0.8822084143587692,
+      "standard_deviation": 0.026024562826371462
+    },
+    "uniform": {
+      "fold_scores": [
+        0.8720326872556695,
+        0.9019835384695706,
+        0.8972368185407412,
+        0.9156898652602959,
+        0.8436847015948732
+      ],
+      "mean": 0.8861255222242301,
+      "standard_deviation": 0.028499207082694874
+    }
+  },
+  "criterion": "fold_macro_class_dice",
+  "development_evidence_only": true,
+  "schema_version": 1,
+  "selected_arm": "uniform",
+  "tie_breaker": "uniform"
+}

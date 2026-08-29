@@ -1,0 +1,101 @@
+# Common recipe. Merge one attempt overlay from configs/attempts/ over this file.
+# Encoder pin: Virchow2 (paige-ai/Virchow2), revision 3158645804b69e3f3bc4439d4116edddf0840a72.
+# Materialize that exact revision locally before extraction or inference.
+run:
+  seed: 0
+
+data:
+  dataset_csv: data/beetle/curated_slide_manifest/dataset.csv
+  splits_csv: data/beetle/curated_slide_manifest/splits.csv
+  dataset_type: segmentation
+  feature_mode: cached
+
+preprocessing:
+  backend: auto
+  # BEETLE masks are sparse pyramidal TIFFs. CuCIM can silently decode their
+  # intermediate sparse levels as background, so mask reads are pinned separately.
+  mask_backend: openslide
+  requested_tile_size_px: 512
+  requested_spacing_um: 0.5
+  # Relative band: accepts the observed ~0.525 µm/px cohort; only the three
+  # declared 0.657476464 µm/px TCGA slides fall back to their native spacing.
+  tolerance: 0.1
+  dense_window_size: 224
+  dense_window_overlap: 0.5
+  masks:
+    pixel_mapping:
+      background: 0
+      other: 1
+      non_invasive_epithelium: 2
+      invasive_epithelium: 3
+      necrosis: 4
+    min_coverage:
+      other: 0.05
+      non_invasive_epithelium: 0.05
+      invasive_epithelium: 0.05
+      necrosis: 0.05
+  sampling:
+    strategy: joint
+    output_mode: merged
+
+execution:
+  precision: fp16
+
+cache:
+  enabled: true
+  # Path carries the encoder revision + weight hash so the cache never mixes encoders.
+  root_dir: data/beetle/cache/virchow2_3158645804b69e3f3bc4439d4116edddf0840a72_8d6cea947eb2418c3b0dff48cfb9b238e47744ab0dfca21b2b0637b140769b4b_dense_fp16
+  reuse_policy: strict
+  validate_payloads: true
+  dtype: fp16
+
+encoder:
+  name: virchow2
+  precision: fp16
+  batch_size: 8
+  adaptive_batching: true
+  output_variant: cls
+
+decoder:
+  name: lightweight_conv
+  params:
+    hidden_dim: 256
+    num_upsample_blocks: 2
+    num_groups: 32
+
+task:
+  name: segmentation
+  params:
+    num_classes: 4
+
+evaluation:
+  metrics: [mean_dice, mean_iou, dice_per_class]
+  save_segmentation_overlays: false
+  save_segmentation_probabilities: false
+  holdout_test: true
+
+training:
+  method: gradient
+  epochs: 30
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  optimizer: adam
+  scheduler: cosine
+  checkpoint_selection: best
+  patience: 8
+  monitor: mean_dice
+  monitor_mode: max
+  batch_size: 64
+  gradient_accumulation: 1
+  num_workers: 4
+
+augmentation:
+  horizontal_flip: 0.0
+  vertical_flip: 0.0
+  rotation_degrees: 0.0
+  translate: 0.0
+  scale: 0.0
+  brightness: 0.0
+  contrast: 0.0
+  saturation: 0.0
+  hue: 0.0

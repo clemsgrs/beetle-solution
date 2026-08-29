@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "selected_arm": "uniform",
+  "expected_roi_count": 170,
+  "hidden_external_labels_used": false,
+  "probability_ensemble": "mean_of_five_fold_softmaxes",
+  "outer_tile_size": 512,
+  "outer_tile_overlap": 0.5,
+  "outer_blending": "Hann",
+  "contract": {
+    "format": "PNG",
+    "mode": "single-channel",
+    "same_filename_and_dimensions_as_roi": true,
+    "labels": [1, 2, 3, 4],
+    "passed": true
+  },
+  "submission_zip": {
+    "bytes": 4326284,
+    "sha256": "d13f2994c6764a1eab8359301bef23588b1ed8deb53f4370b56cbb4bf2c6e42c",
+    "redistribution": "excluded_pending_clearance"
+  }
+}

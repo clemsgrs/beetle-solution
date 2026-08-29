@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "beetle-solution"
+version = "1.0.0"
+description = "Config-driven harness for Virchow2-based BEETLE submissions, built on Soma"
+readme = "README.md"
+requires-python = "==3.11.*"
+license = { file = "LICENSE" }
+authors = [{ name = "Clement Grisi" }]
+dependencies = [
+  "hs2p==4.4.2",
+  "numpy==1.26.4",
+  "Pillow>=10,<12",
+  "PyYAML>=6,<7",
+  "slide2vec[fm]==5.8.2",
+  "soma-pathology @ git+https://github.com/clemsgrs/soma.git@97fb03be48a31ef46fb0e216a01c9bb7f9d12f0c",
+  "torch==2.7.1",
+  "torchvision==0.22.1",
+]
+
+[project.scripts]
+beetle = "beetle.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<9"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["beetle"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }

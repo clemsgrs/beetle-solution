@@ -1,0 +1,4 @@
+# Attempt 1 (submitted): base recipe with uniform training-batch ROI sampling.
+run:
+  output_root: data/beetle/runs/uniform
+  tags: [beetle, virchow2, uniform]
