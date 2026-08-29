@@ -13,17 +13,29 @@ import shutil
 import traceback
 from pathlib import Path
 
-from beetle.attempts import REPO_ROOT
+from beetle.attempts import BASE_CONFIG, REPO_ROOT
 
 ATTEMPTS_DIR = REPO_ROOT / "provenance" / "attempts"
 
 
 def record_training(attempt: str, run_dir: Path, config) -> None:
+    if _outside_checkout():
+        return
     _best_effort(_record_training, attempt, run_dir, config)
 
 
 def record_inference(attempt: str, run_dir: Path, zip_path: Path, roi_count: int) -> None:
+    if _outside_checkout():
+        return
     _best_effort(_record_inference, attempt, run_dir, zip_path, roi_count)
+
+
+def _outside_checkout() -> bool:
+    # Installed as a wheel, REPO_ROOT is site-packages; do not write there.
+    if BASE_CONFIG.is_file():
+        return False
+    print("warning: not a repository checkout; attempt not recorded (run unaffected)")
+    return True
 
 
 def _record_training(attempt: str, run_dir: Path, config) -> None:

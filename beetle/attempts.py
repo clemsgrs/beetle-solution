@@ -13,6 +13,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BASE_CONFIG = REPO_ROOT / "configs" / "base.yaml"
 
 
+def resolve_base_config(path: str | Path = BASE_CONFIG) -> Path:
+    """Return the base config path, or fail clearly outside a source checkout."""
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Base config not found: {path}. The curate/extract/train commands "
+            "run from a repository checkout; run from one or pass an explicit "
+            "config path."
+        )
+    return path
+
+
 def load_attempt_config(
     attempt_path: str | Path,
     *,
@@ -20,6 +32,7 @@ def load_attempt_config(
     overrides: dict[str, Any] | None = None,
 ) -> PipelineConfig:
     """Merge the attempt overlay (and optional overrides) over the base config."""
+    base_path = resolve_base_config(base_path)
     overlay = yaml.safe_load(Path(attempt_path).read_text(encoding="utf-8")) or {}
     if not isinstance(overlay, dict):
         raise TypeError(f"Attempt overlay must be a mapping: {attempt_path}")
