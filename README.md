@@ -2,15 +2,17 @@
 
 This repository holds my solutions to the [BEETLE challenge](https://beetle.grand-challenge.org/) (breast-cancer segmentation in whole-slide images). Each attempt is one config overlay in `configs/attempts/` plus one tagged release with the trained decoder weights. All general machinery lives in [soma](https://github.com/clemsgrs/soma). This repository only holds BEETLE-specific glue and configuration.
 
-The first attempt freezes [Virchow2](https://huggingface.co/paige-ai/Virchow2), extracts dense 2D feature grids, and trains a lightweight convolutional decoder to predict the four segmentation classes. Later attempts can use a different method. See [METHOD.md](METHOD.md) for the algorithmic specification of the submitted attempt.
+Attempt 01 uses a [Virchow2](https://huggingface.co/paige-ai/Virchow2) encoder with a lightweight segmentation decoder and uniform ROI sampling. Later attempts can use a different method. See [METHOD.md](METHOD.md) for its algorithmic specification.
 
 ## Attempts
 
 | Attempt | Config | Dev Dice | Leaderboard overall Dice | Tag | Weights |
 |---|---|---|---|---|---|
-| uniform | `configs/attempts/uniform.yaml` | 0.8861 | 0.9063 | — | — |
+| attempt-01 | `configs/attempts/attempt-01.yaml` | 0.8861 | 0.9063 | `attempt-01` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-01/beetle-attempt-01-weights.zip) |
 
-Dev Dice is the mean dataset-global mean class Dice over the five development folds. The leaderboard score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Evidence for each attempt is in `provenance/attempts/<name>/`.
+Dev Dice is the mean dataset-global mean class Dice over the five development folds. The leaderboard score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Attempt 01's evidence is in `provenance/attempts/attempt-01/`.
+
+The Attempt 01 release also provides the five-fold CV evidence and the submitted External prediction ZIP as separate assets.
 
 ## Install
 
@@ -46,7 +48,7 @@ python -m beetle infer \
   --roi-sidecar /path/to/roi_sidecar.json \
   --output-dir /path/to/predictions \
   --zip submission.zip \
-  --attempt uniform
+  --attempt attempt-01
 ```
 
 `infer` averages the five fold softmax outputs over Hann-blended sliding tiles, checks every PNG against the BEETLE contract, and writes a deterministic flat ZIP.
@@ -63,7 +65,7 @@ python -m beetle curate --beetle-root /path/to/beetle
 python -m beetle extract --work-dir /path/to/work
 
 # 3. Train the five fold decoders for one attempt.
-python -m beetle train --attempt configs/attempts/uniform.yaml
+python -m beetle train --attempt configs/attempts/attempt-01.yaml
 ```
 
 `train` and `infer` write a record of the attempt to `provenance/attempts/<name>/`. A recording failure does not stop a run.

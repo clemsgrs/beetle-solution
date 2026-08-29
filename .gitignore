@@ -214,6 +214,7 @@ tempCodeRunnerFile.py
 artifacts/checkpoints/
 artifacts/cache/
 artifacts/predictions/
+artifacts/releases/
 *.zip
 *.pt
 *.safetensors

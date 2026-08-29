@@ -1,7 +1,6 @@
 {
   "schema_version": 1,
   "historical_training": {
-    "run_id": "beetle-391-uniform-5d26ee8-20260828",
     "soma_git_sha": "5d26ee82efeb48df52df1bc8da42b0d8ce98846c",
     "git_dirty": false,
     "python": "3.11.15",
