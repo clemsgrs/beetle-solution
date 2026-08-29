@@ -209,6 +209,15 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Controlled or generated BEETLE artifacts
+.tasks/
+artifacts/checkpoints/
+artifacts/cache/
+artifacts/predictions/
+*.zip
+*.pt
+*.safetensors
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
