@@ -1,0 +1,12 @@
+# Attempt 02: Attempt 01 with a four-block lightweight decoder.
+run:
+  output_root: data/beetle/runs/attempt-02
+  tags: [beetle, virchow2, attempt-02]
+
+decoder:
+  params:
+    num_upsample_blocks: 4
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null

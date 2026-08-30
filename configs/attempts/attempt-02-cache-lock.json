@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-01",
+  "dataset_sha256": "7ac6294ca5d6e41a45eda0eb8669daab37673b35b59fe9de4033aa629f6d6cf5",
+  "splits_sha256": "2fa211abdf0d5af41a95a9e403e76db0c8d81083a5607267da9da941624a2ae6",
+  "cache_root_name": "virchow2_3158645804b69e3f3bc4439d4116edddf0840a72_8d6cea947eb2418c3b0dff48cfb9b238e47744ab0dfca21b2b0637b140769b4b_dense_fp16",
+  "feature_namespace": "dense/95ab55f548038c00/dense_embeddings",
+  "identity_file": "cache_payload_sha256_openslide.json",
+  "manifest_file": "cache_payload_sha256_openslide.txt",
+  "manifest_sha256": "3efe739ae37f82f41dce62451101c60cfe3dca3ee87ec0e70ca13564f3e5de18",
+  "manifest_entries": 249394,
+  "payload_bytes": 437290638590,
+  "tensor_files": 124697,
+  "sidecar_files": 124697,
+  "roi_draws_per_epoch_by_fold": {
+    "0": 76480,
+    "1": 73792,
+    "2": 73984,
+    "3": 76864,
+    "4": 72832
+  }
+}
