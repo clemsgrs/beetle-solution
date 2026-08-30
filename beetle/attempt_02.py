@@ -5,9 +5,12 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import csv
+import datetime
 import hashlib
+from importlib.metadata import distribution
 import json
 from pathlib import Path
+import platform
 import statistics
 import subprocess
 import sys
@@ -31,6 +34,11 @@ FOLD_ARTIFACTS = (
     "confusion_evidence_tune.json",
     "metrics.json",
     "segmentation_roi_population.json",
+)
+SPACING_EXCEPTION_PATIENT_IDS = (
+    "TCGA-OL-A66I",
+    "TCGA-OL-A66P",
+    "TCGA-OL-A6VO",
 )
 
 
@@ -493,6 +501,62 @@ def assemble_release_archives(
     }
 
 
+def capture_environment_provenance(*, output_path: str | Path) -> dict:
+    """Record the runtime and hardware identity used for the real five-fold run."""
+    import torch
+
+    soma_distribution = distribution("soma-pathology")
+    direct_url = json.loads(soma_distribution.read_text("direct_url.json") or "{}")
+    git_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    result = {
+        "schema_version": 1,
+        "attempt_id": "attempt-02",
+        "captured_at": datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds"
+        ),
+        "python": {
+            "version": platform.python_version(),
+            "executable": sys.executable,
+            "platform": platform.platform(),
+        },
+        "soma": {
+            "version": soma_distribution.version,
+            "commit": direct_url.get("vcs_info", {}).get("commit_id"),
+            "requested_revision": direct_url.get("vcs_info", {}).get(
+                "requested_revision"
+            ),
+        },
+        "torch": {
+            "version": torch.__version__,
+            "cuda": torch.version.cuda,
+            "cudnn": torch.backends.cudnn.version(),
+        },
+        "gpus": [
+            {
+                "index": index,
+                "name": torch.cuda.get_device_name(index),
+                "total_memory_bytes": torch.cuda.get_device_properties(
+                    index
+                ).total_memory,
+            }
+            for index in range(torch.cuda.device_count())
+        ],
+        "repository_commit": git_commit,
+    }
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return result
+
+
 def _scientific_protocol(config) -> dict:
     payload = asdict(config)
     payload.pop("output_root")
@@ -866,6 +930,23 @@ def _build_parser() -> argparse.ArgumentParser:
     train.add_argument("--preflight", type=Path, required=True)
     train.add_argument("--strict-cache-validation", type=Path, required=True)
     train.add_argument("--run-id", required=True)
+    report = subparsers.add_parser("report")
+    report.add_argument("--attempt-01-report", type=Path, required=True)
+    report.add_argument(
+        "--attempt-02-evidence", type=Path, action="append", required=True
+    )
+    report.add_argument("--sample-patient-csv", type=Path, required=True)
+    report.add_argument("--output", type=Path, required=True)
+    report.add_argument("--bootstrap-draws", type=int, default=10_000)
+    environment = subparsers.add_parser("environment")
+    environment.add_argument("--output", type=Path, required=True)
+    package = subparsers.add_parser("package")
+    package.add_argument("--run-dir", type=Path, required=True)
+    package.add_argument("--preflight", type=Path, required=True)
+    package.add_argument("--strict-cache-validation", type=Path, required=True)
+    package.add_argument("--report", type=Path, required=True)
+    package.add_argument("--environment", type=Path, required=True)
+    package.add_argument("--output-dir", type=Path, required=True)
     worker = subparsers.add_parser("probe-worker", help=argparse.SUPPRESS)
     worker.add_argument("--physical-batch-size", type=int, required=True)
     worker.add_argument("--accumulation-steps", type=int, required=True)
@@ -897,6 +978,35 @@ def main(argv: Sequence[str] | None = None) -> int:
             strict_validation_path=args.strict_cache_validation,
             run_id=args.run_id,
         )
+        return 0
+    if args.command == "report":
+        if len(args.attempt_02_evidence) != 5:
+            raise ValueError("Attempt 02 report requires exactly five fold evidence files")
+        result = build_decoder_depth_report(
+            attempt_01_report=args.attempt_01_report,
+            attempt_02_evidence=args.attempt_02_evidence,
+            sample_patient_csv=args.sample_patient_csv,
+            spacing_exception_patient_ids=SPACING_EXCEPTION_PATIENT_IDS,
+            bootstrap_draws=args.bootstrap_draws,
+        )
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return 0
+    if args.command == "environment":
+        capture_environment_provenance(output_path=args.output)
+        return 0
+    if args.command == "package":
+        result = assemble_release_archives(
+            run_dir=args.run_dir,
+            preflight_path=args.preflight,
+            strict_validation_path=args.strict_cache_validation,
+            report_path=args.report,
+            environment_path=args.environment,
+            output_dir=args.output_dir,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     try:
         result = probe_candidate(
