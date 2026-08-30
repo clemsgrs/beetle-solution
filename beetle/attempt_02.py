@@ -501,13 +501,15 @@ def assemble_release_archives(
     }
 
 
-def capture_environment_provenance(*, output_path: str | Path) -> dict:
+def capture_environment_provenance(
+    *, output_path: str | Path, repository_commit: str | None = None
+) -> dict:
     """Record the runtime and hardware identity used for the real five-fold run."""
     import torch
 
     soma_distribution = distribution("soma-pathology")
     direct_url = json.loads(soma_distribution.read_text("direct_url.json") or "{}")
-    git_commit = subprocess.run(
+    git_commit = repository_commit or subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=REPO_ROOT,
         check=True,
@@ -940,6 +942,7 @@ def _build_parser() -> argparse.ArgumentParser:
     report.add_argument("--bootstrap-draws", type=int, default=10_000)
     environment = subparsers.add_parser("environment")
     environment.add_argument("--output", type=Path, required=True)
+    environment.add_argument("--repository-commit")
     package = subparsers.add_parser("package")
     package.add_argument("--run-dir", type=Path, required=True)
     package.add_argument("--preflight", type=Path, required=True)
@@ -995,7 +998,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
     if args.command == "environment":
-        capture_environment_provenance(output_path=args.output)
+        capture_environment_provenance(
+            output_path=args.output, repository_commit=args.repository_commit
+        )
         return 0
     if args.command == "package":
         result = assemble_release_archives(
