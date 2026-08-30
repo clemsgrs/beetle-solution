@@ -30,7 +30,6 @@ FOLD_ARTIFACTS = (
     "best_model.pt",
     "training_history.json",
     "roi_batch_sampling.json",
-    "sampler_audit.json",
     "confusion_evidence_tune.json",
     "metrics.json",
     "segmentation_roi_population.json",
