@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-08-31T15:28:14+00:00",
+  "run_dir": "/maindisk/clement/soma-beetle-campaign-20260827/data/beetle/runs/attempt-02/experiments/dataset-virchow2-slide-segmentation_98e06e43d3e0/runs/attempt-02-four-block-20260830",
+  "soma": {
+    "commit": "4a3d6c84f9a3dc2832e585c6884a95d14a0f79bc",
+    "version": "1.11.2"
+  }
+}

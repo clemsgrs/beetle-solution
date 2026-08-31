@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 import zipfile
 
@@ -9,12 +10,88 @@ import yaml
 from beetle.attempt_02 import (
     assemble_release_archives,
     build_decoder_depth_report,
+    capture_environment_provenance,
+    _probe_candidate_worker,
     probe_candidate,
     run_preflight,
     run_training,
     validate_cache_payloads,
     validate_completed_run,
 )
+
+
+def test_probe_candidate_worker_returns_worker_json(monkeypatch):
+    completed = SimpleNamespace(
+        returncode=0,
+        stdout='{"passed": true, "peak_allocated_bytes": 123}',
+        stderr="",
+    )
+    monkeypatch.setattr("beetle.attempt_02.subprocess.run", lambda *args, **kwargs: completed)
+
+    assert _probe_candidate_worker(32, 2, device="cuda:0", timeout_seconds=7) == {
+        "passed": True,
+        "peak_allocated_bytes": 123,
+    }
+
+
+def test_probe_candidate_worker_records_timeout(monkeypatch):
+    def timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=7)
+
+    monkeypatch.setattr("beetle.attempt_02.subprocess.run", timeout)
+
+    assert _probe_candidate_worker(32, 2, device="cuda:0", timeout_seconds=7) == {
+        "passed": False,
+        "error_type": "TimeoutExpired",
+        "error": "decoder probe exceeded 7 seconds",
+    }
+
+
+def test_environment_provenance_records_exact_runtime_identity(tmp_path, monkeypatch):
+    import datetime
+    import torch
+
+    class FixedDateTime(datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 8, 31, 12, 0, tzinfo=tz)
+
+    distribution = SimpleNamespace(
+        version="1.11.2",
+        read_text=lambda name: json.dumps(
+            {"vcs_info": {"commit_id": "soma-commit", "requested_revision": "soma-ref"}}
+        ),
+    )
+    monkeypatch.setattr("beetle.attempt_02.distribution", lambda name: distribution)
+    monkeypatch.setattr("beetle.attempt_02.datetime.datetime", FixedDateTime)
+    monkeypatch.setattr("beetle.attempt_02.platform.python_version", lambda: "3.11.15")
+    monkeypatch.setattr("beetle.attempt_02.platform.platform", lambda: "test-platform")
+    monkeypatch.setattr("beetle.attempt_02.sys.executable", "/python")
+    monkeypatch.setattr(torch, "__version__", "2.7.1+cu128")
+    monkeypatch.setattr(torch.version, "cuda", "12.8")
+    monkeypatch.setattr(torch.backends.cudnn, "version", lambda: 90701)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 1)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda index: "H200")
+    monkeypatch.setattr(
+        torch.cuda, "get_device_properties", lambda index: SimpleNamespace(total_memory=150)
+    )
+    output = tmp_path / "environment.json"
+
+    result = capture_environment_provenance(
+        output_path=output, repository_commit="repo-commit"
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "attempt_id": "attempt-02",
+        "captured_at": "2026-08-31T12:00:00+00:00",
+        "python": {"version": "3.11.15", "executable": "/python", "platform": "test-platform"},
+        "soma": {"version": "1.11.2", "commit": "soma-commit", "requested_revision": "soma-ref"},
+        "torch": {"version": "2.7.1+cu128", "cuda": "12.8", "cudnn": 90701},
+        "gpus": [{"index": 0, "name": "H200", "total_memory_bytes": 150}],
+        "repository_commit": "repo-commit",
+    }
+    assert json.loads(output.read_text(encoding="utf-8")) == result
 
 
 def _write_attempt_01_identity(tmp_path: Path) -> tuple[Path, Path]:
@@ -273,8 +350,8 @@ def test_training_launch_requires_both_completed_pretraining_gates(tmp_path, mon
                 },
                 "execution": {
                     "selected": {
-                        "physical_batch_size": 64,
-                        "accumulation_steps": 1,
+                        "physical_batch_size": 32,
+                        "accumulation_steps": 2,
                         "effective_batch_size": 64,
                     },
                     "frozen_fold_ids": [0, 1, 2, 3, 4],
@@ -299,6 +376,15 @@ def test_training_launch_requires_both_completed_pretraining_gates(tmp_path, mon
         ),
         encoding="utf-8",
     )
+    from soma.config import save_config
+    from beetle.attempts import load_attempt_config
+
+    resolved_dir = tmp_path / "resolved"
+    resolved_dir.mkdir()
+    save_config(
+        load_attempt_config("configs/attempts/attempt-02.yaml"),
+        resolved_dir / "attempt-02.yaml",
+    )
     launched = []
     monkeypatch.chdir(tmp_path)
 
@@ -314,8 +400,8 @@ def test_training_launch_requires_both_completed_pretraining_gates(tmp_path, mon
     config = launched[0]
     assert config.run_id == "attempt-02-test"
     assert config.decoder.params["num_upsample_blocks"] == 4
-    assert config.training.batch_size == 64
-    assert config.training.gradient_accumulation == 1
+    assert config.training.batch_size == 32
+    assert config.training.gradient_accumulation == 2
 
     invalid = json.loads(preflight.read_text(encoding="utf-8"))
     invalid["execution"]["frozen_fold_ids"] = [0, 1, 2, 3]
@@ -326,6 +412,34 @@ def test_training_launch_requires_both_completed_pretraining_gates(tmp_path, mon
             strict_validation_path=validation,
             run_id="must-not-launch",
             trainer=lambda config: pytest.fail("invalid evidence launched training"),
+        )
+
+
+def test_training_launch_refuses_protocol_drift_after_preflight(tmp_path, monkeypatch):
+    preflight = tmp_path / "preflight.json"
+    preflight.write_text(json.dumps({
+        "status": "completed", "attempt_id": "attempt-02",
+        "cache_reuse": {"verified": True, "cache_root_name": "cache", "feature_namespace": "features", "tensor_files": 1, "sidecar_files": 1, "payload_bytes": 10},
+        "execution": {"selected": {"physical_batch_size": 64, "accumulation_steps": 1, "effective_batch_size": 64}, "frozen_fold_ids": [0, 1, 2, 3, 4]},
+    }), encoding="utf-8")
+    validation = tmp_path / "validation.json"
+    validation.write_text(json.dumps({
+        "status": "completed", "reuse_policy": "strict", "payload_validation": True,
+        "feature_dir": "/cache/features", "roi_grids": 1, "tensor_files": 1, "sidecar_files": 1, "payload_bytes": 10,
+    }), encoding="utf-8")
+    resolved = tmp_path / "resolved/attempt-02.yaml"
+    resolved.parent.mkdir()
+    resolved.write_text("resolved", encoding="utf-8")
+    monkeypatch.setattr("soma.config.load_config", lambda path: "preflight-protocol")
+    monkeypatch.setattr("beetle.attempt_02.load_attempt_config", lambda path, overrides=None: "current-protocol")
+    monkeypatch.setattr("beetle.attempt_02._scientific_protocol", lambda value: {"identity": value})
+
+    with pytest.raises(ValueError, match="protocol drift"):
+        run_training(
+            preflight_path=preflight,
+            strict_validation_path=validation,
+            run_id="must-not-launch",
+            trainer=lambda config: pytest.fail("protocol drift launched training"),
         )
 
 

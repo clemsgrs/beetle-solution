@@ -12,6 +12,8 @@ Each 512×512 ROI was reflect-padded by 6 pixels along its bottom and right edge
 
 Each fold trained a 1,510,660-parameter decoder comprising a 1×1 projection from 1,280 to 256 channels followed by GroupNorm (32 groups) and ReLU; two blocks of 2× bilinear upsampling, 3×3 convolution, GroupNorm, and ReLU; and a 1×1 four-class classifier. The decoder produced 148×148×4 logits. These logits were bilinearly interpolated to 518×518×4, and only the top-left 512×512 region corresponding to the original, unpadded ROI was retained for loss computation and prediction.
 
+Attempt 02 was a development-only ablation that reused the verified Attempt 01 features and protocol, changing only the decoder depth from two to four upsampling/convolution blocks. Preflight selected physical batch size 64 with one accumulation step and froze it for all five folds. Its equal-weight five-fold dataset-global mean class Dice was 0.8880192 ± 0.0286550 (sample standard deviation), compared only against Attempt 01's 0.8861255 ± 0.0284992. This result did not select or replace an External model.
+
 We minimized unweighted pixelwise cross-entropy plus multiclass soft-Dice, each with coefficient 1, over annotated pixels. Optimization used Adam with learning rate 1×10⁻⁴ and weight decay 1×10⁻⁵, a 30-epoch cosine schedule, batch size 64, no data augmentation, and fold seeds 0–4. Training stopped after eight epochs without improvement in validation dataset-global mean class Dice; the best checkpoint on this criterion was retained.
 
 ## External inference

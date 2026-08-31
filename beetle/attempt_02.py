@@ -155,6 +155,14 @@ def run_training(
     cache = preflight.get("cache_reuse", {})
     execution = preflight.get("execution", {})
     selected = execution.get("selected", {})
+    selected_pair = (
+        selected.get("physical_batch_size"),
+        selected.get("accumulation_steps"),
+    )
+    valid_selection = (
+        selected_pair in BATCH_CANDIDATES
+        and selected.get("effective_batch_size") == 64
+    )
     expected_feature_suffix = str(
         Path(str(cache.get("cache_root_name", "")))
         / str(cache.get("feature_namespace", ""))
@@ -163,12 +171,7 @@ def run_training(
         preflight.get("status") == "completed"
         and preflight.get("attempt_id") == "attempt-02"
         and cache.get("verified") is True
-        and selected
-        == {
-            "physical_batch_size": 64,
-            "accumulation_steps": 1,
-            "effective_batch_size": 64,
-        }
+        and valid_selection
         and execution.get("frozen_fold_ids") == [0, 1, 2, 3, 4]
         and validation.get("status") == "completed"
         and validation.get("reuse_policy") == "strict"
@@ -183,8 +186,24 @@ def run_training(
         raise ValueError(
             "Attempt 02 pretraining gate is incomplete or disagrees with the locked cache"
         )
+    from soma.config import load_config
+
+    resolved_path = Path(preflight_path).parent / "resolved/attempt-02.yaml"
+    if not resolved_path.is_file():
+        raise ValueError("Attempt 02 pretraining gate is missing resolved protocol evidence")
+    resolved = load_config(resolved_path)
+    current = load_attempt_config(ATTEMPT_02_CONFIG)
+    if _scientific_protocol(resolved) != _scientific_protocol(current):
+        raise ValueError("Attempt 02 protocol drift after preflight")
     config = load_attempt_config(
-        ATTEMPT_02_CONFIG, overrides={"run": {"run_id": run_id}}
+        ATTEMPT_02_CONFIG,
+        overrides={
+            "run": {"run_id": run_id},
+            "training": {
+                "batch_size": selected["physical_batch_size"],
+                "gradient_accumulation": selected["accumulation_steps"],
+            },
+        },
     )
     if (
         config.decoder.params.get("num_upsample_blocks") != 4

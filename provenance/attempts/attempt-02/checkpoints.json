@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-02",
+  "redistribution": "github_release_asset",
+  "checkpoints": [
+    {"fold": 0, "bytes": 32330101, "sha256": "deb77f8973af992c89b6517b8a9732f4796c140290d9be66f454b5c985e0fe94"},
+    {"fold": 1, "bytes": 32330101, "sha256": "9870b256e1092d07d1aca28f5099f8b3a2dd9d3ecd0c9c1d35b0d64f9c8fdd68"},
+    {"fold": 2, "bytes": 32330101, "sha256": "b3eef657e165547367028194ff3cf317b02bb65cb9ebd2c4cc4f81e7351722d1"},
+    {"fold": 3, "bytes": 32330101, "sha256": "24b91f7686f48db3a2fc9ed7f7234dae586938dd9fcb8dc79385c2cc0c358c71"},
+    {"fold": 4, "bytes": 32330101, "sha256": "5e9b6ef19b3518d5cab3682ca533d867054305197a2d035c204586b84f14f47d"}
+  ]
+}
