@@ -1,0 +1,159 @@
+run:
+  output_root: data/beetle/runs/attempt-02
+  mirror_root: null
+  seed: 0
+  tags:
+  - beetle
+  - virchow2
+  - attempt-02
+data:
+  dataset_csv: data/beetle/curated_slide_manifest/dataset.csv
+  splits_csv: data/beetle/curated_slide_manifest/splits.csv
+  dataset_type: segmentation
+  feature_mode: cached
+preprocessing:
+  backend: auto
+  requested_tile_size_px: 512
+  requested_spacing_um: 0.5
+  requested_region_size_px: null
+  region_tile_multiple: null
+  tissue_method: hsv
+  min_coverage:
+    tissue: 0.1
+  overlap: 0.0
+  dense_window_size: 224
+  dense_window_overlap: 0.5
+  seg_downsample: 64
+  sam2_device: cpu
+  sam2_num_workers: null
+  tolerance: 0.1
+  ref_tile_size_px: null
+  a_t: 4
+  tissue_mask_tissue_value: 1
+  preview:
+    save_mask_preview: true
+    save_tiling_preview: true
+    downsample: 32
+    tissue_contour_color:
+    - 37
+    - 94
+    - 59
+    mask_overlay_alpha: 0.5
+  mask_backend: openslide
+  spacing_policy: native_if_coarser
+  read_tile_size_px: null
+  read_region_size_px: null
+  feature_kind: patch_features
+  attention:
+    blocks:
+    - -1
+    include_registers: false
+  masks:
+    pixel_mapping:
+      background: 0
+      other: 1
+      non_invasive_epithelium: 2
+      invasive_epithelium: 3
+      necrosis: 4
+    min_coverage:
+      other: 0.05
+      non_invasive_epithelium: 0.05
+      invasive_epithelium: 0.05
+      necrosis: 0.05
+    colors: null
+  sampling:
+    strategy: joint
+    output_mode: merged
+execution:
+  num_gpus: null
+  num_preprocessing_workers: null
+  prefetch_factor: null
+  precision: fp16
+  num_workers_per_gpu: null
+cache:
+  enabled: true
+  root_dir: data/beetle/cache/virchow2_3158645804b69e3f3bc4439d4116edddf0840a72_8d6cea947eb2418c3b0dff48cfb9b238e47744ab0dfca21b2b0637b140769b4b_dense_fp16
+  reuse_policy: strict
+  validate_payloads: true
+  dtype: fp16
+encoder:
+  name: virchow2
+  precision: fp16
+  batch_size: 8
+  adaptive_batching: true
+  output_variant: cls
+  allow_non_recommended_settings: false
+  save_tile_features: false
+aggregation: null
+task:
+  name: segmentation
+  params:
+    num_classes: 4
+evaluation:
+  metrics:
+  - mean_dice
+  - dataset_global_mean_dice
+  - mean_iou
+  - dice_per_class
+  subgroups:
+    columns: []
+  holdout_test: true
+  overwrite_test: false
+  save_segmentation_overlays: false
+  save_segmentation_probabilities: false
+  save_segmentation_confusion_evidence: true
+  save_detection_overlays: true
+  save_detection_heatmaps: false
+training:
+  method: gradient
+  epochs: 30
+  learning_rate: 0.0001
+  weight_decay: 1.0e-05
+  optimizer: adam
+  scheduler: cosine
+  checkpoint_selection: best
+  patience: 8
+  monitor: dataset_global_mean_dice
+  monitor_mode: max
+  batch_size: 64
+  roi_batch_sampling: uniform
+  class_request_ratios: null
+  roi_draws_per_epoch: null
+  gradient_accumulation: 1
+  tune_is_test: false
+  allow_missing_tune: false
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  max_train_pixels: 2000000
+augmentation:
+  horizontal_flip: 0.0
+  vertical_flip: 0.0
+  rotation_degrees: 0.0
+  translate: 0.0
+  scale: 0.0
+  brightness: 0.0
+  contrast: 0.0
+  saturation: 0.0
+  hue: 0.0
+normalization:
+  method: none
+  eps: 1.0e-06
+projection:
+  method: none
+  target_dim: null
+  seed: 0
+reports:
+  heatmaps:
+    enabled: false
+    cmap: coolwarm
+    alpha: 0.5
+    blur_sigma: 0.0
+decoder:
+  name: lightweight_conv
+  params:
+    hidden_dim: 256
+    num_upsample_blocks: 4
+    num_groups: 32
+pixel_classifier: null
+composite: null

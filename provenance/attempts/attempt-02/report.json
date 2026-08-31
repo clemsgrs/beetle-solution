@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-02",
+  "fold_scores": [0.865829664848, 0.905994369112, 0.901980075039, 0.916511801376, 0.849780266312],
+  "mean": 0.888019235337,
+  "sample_standard_deviation": 0.028654984686,
+  "formal_comparator": "attempt-01",
+  "mean_delta": 0.001893713113,
+  "external_model_superseded": false,
+  "release_report_sha256": "931e4f2a60743793b80cd11b7f7555d398336ecd4c99de479cd5d839805acfa8"
+}

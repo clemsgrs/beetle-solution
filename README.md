@@ -9,10 +9,11 @@ Attempt 01 uses a [Virchow2](https://huggingface.co/paige-ai/Virchow2) encoder w
 | Attempt | Config | Dev Dice | Leaderboard overall Dice | Tag | Weights |
 |---|---|---|---|---|---|
 | attempt-01 | `configs/attempts/attempt-01.yaml` | 0.8861 | 0.9063 | `attempt-01` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-01/beetle-attempt-01-weights.zip) |
+| attempt-02 | `configs/attempts/attempt-02.yaml` | 0.8880 | — | `attempt-02` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-02/beetle-attempt-02-weights.zip) |
 
 Dev Dice is the mean dataset-global mean class Dice over the five development folds. The leaderboard score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Attempt 01's evidence is in `provenance/attempts/attempt-01/`.
 
-The Attempt 01 release also provides the five-fold CV evidence and the submitted External prediction ZIP as separate assets.
+The Attempt 01 release also provides the five-fold CV evidence and the submitted External prediction ZIP as separate assets. Attempt 02 is a development-only four-block decoder-depth ablation; its release provides five-fold evidence and does not replace the Attempt 01 External model.
 
 ## Install
 
