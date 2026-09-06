@@ -58,7 +58,7 @@ python -m beetle infer \
 
 `slide-predict` writes one whole-slide mask per slide, predicted only inside a per-slide inference mask: mask pixels get submission labels 1-4, everything else is 0. Each output is a pyramidal tiled TIFF with the mask's level-0 dimensions and spacing, next to a `summary.csv` of per-slide mask and predicted pixel counts. Existing outputs are skipped, so an interrupted export resumes.
 
-`--slides-csv` lists the slides with `wsi_path` and `roi_mask_path` columns (the curated manifest's `image_path` and `label_mask_path` are accepted too), and it decides how the decoders are used:
+`--slides-csv` lists the slides with `image_path` and `label_mask_path` columns, the curated manifest's vocabulary, and it decides how the decoders are used:
 
 - With a `validation_fold` column, as in the curated manifest, the development cohort is exported out of fold: for each fold only that fold's decoder is loaded and applied to its held-out slides, with the Zenodo annotation raster as the inference mask, so the result can be scored on exactly the annotated pixels (for example against a model evaluated on the same rasters) with no patch-sampling coverage rule in between. Outputs land in `fold_k/`; pass `--folds 0 1` for a subset.
 - Without one, for example the TIGER leaderboard-1 test sets, the fold ensemble (all folds unless `--folds` narrows it) predicts every slide inside its ROI mask, straight into the output directory, one TIFF per slide named after the WSI stem.

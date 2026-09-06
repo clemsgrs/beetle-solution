@@ -141,7 +141,7 @@ def test_load_slide_csv_reads_the_curated_manifest_with_folds(tmp_path):
     assert str(b_rec.image_path) == "/x/b.tif" and a_rec.fold == 0 and a_rec.spacing_at_level_0 is None
 
     mixed = tmp_path / "mixed.csv"
-    mixed.write_text("wsi_path,roi_mask_path,fold\n/x/a.tif,/x/a_m.tif,2\n/x/b.tif,/x/b_m.tif,\n")
+    mixed.write_text("image_path,label_mask_path,validation_fold\n/x/a.tif,/x/a_m.tif,2\n/x/b.tif,/x/b_m.tif,\n")
     with pytest.raises(ValueError, match="all or none"):
         load_slide_csv(mixed)
     with pytest.raises(ValueError, match="column"):
@@ -185,7 +185,7 @@ def test_export_fold_writes_masks_and_summary_and_resumes(tmp_path):
 def test_load_slide_csv_defaults_sample_id_to_the_wsi_stem(tmp_path):
     listing = tmp_path / "slides.csv"
     listing.write_text(
-        "wsi_path,roi_mask_path\n"
+        "image_path,label_mask_path\n"
         "/a/images/202B.tif,/a/roi-masks/202B_roi_mask.tif\n"
         "/a/images/TCGA-D8-A27G-01Z-00-DX1.04FC.tif,/a/roi-masks/TCGA-D8-A27G-01Z-00-DX1.04FC_roi_mask.tif\n"
     )

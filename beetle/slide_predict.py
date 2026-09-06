@@ -1,10 +1,10 @@
 """Export whole-slide segmentation masks inside a per-slide inference mask.
 
-``--slides-csv`` lists the slides, one row each, with a ``wsi_path`` and a
-``roi_mask_path`` column (the curated manifest's ``image_path`` / ``label_mask_path``
-names are accepted too). The CSV also decides how the decoders are used:
+``--slides-csv`` lists the slides, one row each, with an ``image_path`` and a
+``label_mask_path`` column, as in the curated manifest. The CSV also decides how the
+decoders are used:
 
-* With a ``validation_fold`` (or ``fold``) column, the development cohort is exported
+* With a ``validation_fold`` column, the development cohort is exported
   out of fold: for each fold ``k``, only fold ``k``'s decoder is loaded and applied to
   the slides that fold holds out, with the Zenodo annotation raster as the inference
   mask, so a collaborator can score the result against the annotation pixel for pixel,
@@ -499,46 +499,34 @@ def export_fold(
     )
 
 
-_COLUMN_ALIASES = {
-    "wsi_path": ("wsi_path", "image_path"),
-    "roi_mask_path": ("roi_mask_path", "label_mask_path"),
-    "fold": ("validation_fold", "fold"),
-}
-
-
 def _column(row: dict, name: str) -> str:
-    for alias in _COLUMN_ALIASES.get(name, (name,)):
-        if alias in row and row[alias] is not None:
-            return str(row[alias]).strip()
-    return ""
+    value = row.get(name)
+    return "" if value is None else str(value).strip()
 
 
 def load_slide_csv(path: str | Path) -> tuple[SlideRecord, ...]:
-    """Records from a slide listing.
+    """Records from a slide listing in the curated manifest's column vocabulary.
 
-    Required columns: ``wsi_path`` and ``roi_mask_path`` (or the manifest names
-    ``image_path`` / ``label_mask_path``). Optional: ``sample_id`` (defaults to the WSI
-    stem), ``patient_id``, ``spacing_at_level_0``, and ``validation_fold`` / ``fold``
+    Required: ``image_path`` and ``label_mask_path``. Optional: ``sample_id`` (defaults
+    to the WSI stem), ``patient_id``, ``spacing_at_level_0``, and ``validation_fold``
     (``fold3`` or ``3``), which must be present on every row or on none.
     """
     records = []
     with Path(path).open(newline="") as handle:
         reader = csv.DictReader(handle)
-        fields = set(reader.fieldnames or ())
-        for name in ("wsi_path", "roi_mask_path"):
-            if not fields & set(_COLUMN_ALIASES[name]):
-                raise ValueError(f"{path} needs a {' or '.join(_COLUMN_ALIASES[name])} column")
+        missing = {"image_path", "label_mask_path"} - set(reader.fieldnames or ())
+        if missing:
+            raise ValueError(f"{path} lacks the {sorted(missing)} column(s)")
         for row in reader:
-            image = Path(_column(row, "wsi_path"))
-            mask = Path(_column(row, "roi_mask_path"))
-            fold_text = _column(row, "fold").removeprefix("fold")
+            image = Path(_column(row, "image_path"))
+            fold_text = _column(row, "validation_fold").removeprefix("fold")
             spacing_text = _column(row, "spacing_at_level_0")
             records.append(
                 SlideRecord(
                     sample_id=_column(row, "sample_id") or image.stem,
                     patient_id=_column(row, "patient_id"),
                     image_path=image,
-                    label_mask_path=mask,
+                    label_mask_path=Path(_column(row, "label_mask_path")),
                     spacing_at_level_0=float(spacing_text) if spacing_text else None,
                     fold=int(fold_text) if fold_text else None,
                 )
@@ -633,7 +621,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--slides-csv",
         type=Path,
         required=True,
-        help="wsi_path,roi_mask_path[,sample_id][,validation_fold] CSV; the curated manifest works as is",
+        help="image_path,label_mask_path[,sample_id][,validation_fold] CSV; the curated manifest works as is",
     )
     parser.add_argument(
         "--folds",
