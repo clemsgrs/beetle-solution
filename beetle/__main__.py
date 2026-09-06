@@ -1,10 +1,10 @@
-"""Entry point: ``python -m beetle {curate, extract, train, infer, cv-predict, slide-predict}``."""
+"""Entry point: ``python -m beetle {curate, extract, train, infer, slide-predict}``."""
 
 from __future__ import annotations
 
 import sys
 
-_COMMANDS = ("curate", "extract", "train", "infer", "cv-predict", "slide-predict")
+_COMMANDS = ("curate", "extract", "train", "infer", "slide-predict")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,10 +19,8 @@ def main(argv: list[str] | None = None) -> int:
         from beetle.extract import main as run
     elif command == "train":
         from beetle.train import main as run
-    elif command == "cv-predict":
-        from beetle.cv_predict import main as run
     elif command == "slide-predict":
-        from beetle.cv_predict import slide_main as run
+        from beetle.slide_predict import main as run
     else:
         from beetle.infer import main as run
     return run(rest)

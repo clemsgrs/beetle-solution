@@ -1,21 +1,21 @@
-"""Export out-of-fold whole-slide segmentation masks for the development cohort.
+"""Export whole-slide segmentation masks inside a per-slide inference mask.
 
-For each fold ``k``, load only fold ``k``'s decoder and predict every slide that fold
-holds out (``split == test`` in ``splits.csv``). The Zenodo annotation raster of each
-slide is the inference mask: only annotated pixels (raw value ``> 0``) are predicted,
+Two input modes, one output convention:
+
+* Development cohort (default): the manifest recorded in the run config (or
+  ``--dataset-csv``) lists every slide with its ``validation_fold``. For each fold ``k``,
+  only fold ``k``'s decoder is loaded and applied to the slides that fold holds out, with
+  the Zenodo annotation raster as the inference mask, so a collaborator can score the
+  result against the annotation pixel for pixel, with no patch-sampling coverage rule in
+  between. Outputs go to ``fold_k/``.
+* External set (``--slides-csv``): a ``wsi_path,roi_mask_path`` CSV predicted by the fold
+  ensemble (all folds unless ``--folds`` narrows it) inside each ROI mask.
+
+Only mask pixels (raw value ``> 0``) are predicted and receive submission labels 1-4;
 everything else is written as ``0``. Each output is a pyramidal tiled TIFF with the same
-level-0 dimensions and spacing as the annotation raster, holding submission labels 1-4,
-so a collaborator can score it against the annotation pixel for pixel, with no
-patch-sampling coverage rule in between.
-
-Layout of ``--output-dir``::
-
-    fold_0/<sample_id>.tif       one mask per held-out slide
-    fold_0/summary.csv           per-slide annotated / predicted pixel counts
-    ...
-    fold_4/
-
-Slides whose mask already exists are skipped, so an interrupted export resumes.
+level-0 dimensions and spacing as the mask, next to a ``summary.csv`` of per-slide mask
+and predicted pixel counts. Slides whose mask already exists are skipped, so an
+interrupted export resumes.
 """
 
 from __future__ import annotations
@@ -95,40 +95,27 @@ class SlideRasters:
 # -- manifest -------------------------------------------------------------------------
 
 
-def load_fold_slides(
-    dataset_csv: str | Path, splits_csv: str | Path, fold: int
-) -> tuple[SlideRecord, ...]:
-    """Slides held out (``test``) by ``fold``, in manifest order."""
-    with Path(dataset_csv).open(newline="") as handle:
-        rows = {row["sample_id"]: row for row in csv.DictReader(handle)}
-    with Path(splits_csv).open(newline="") as handle:
-        held_out = [
-            row["sample_id"]
-            for row in csv.DictReader(handle)
-            if int(row["fold"]) == fold and row["split"] == "test"
-        ]
-    if not held_out:
-        raise ValueError(f"No held-out slides for fold {fold} in {splits_csv}")
-    missing = [sample_id for sample_id in held_out if sample_id not in rows]
-    if missing:
-        raise ValueError(f"splits.csv names slides absent from dataset.csv: {missing}")
+def load_fold_slides(dataset_csv: str | Path, fold: int) -> tuple[SlideRecord, ...]:
+    """Slides whose manifest ``validation_fold`` is ``fold`` (what fold ``k`` holds out)."""
     records = []
-    for sample_id in held_out:
-        row = rows[sample_id]
-        declared = str(row.get("spacing_at_level_0", "")).strip()
-        records.append(
-            SlideRecord(
-                sample_id=sample_id,
-                patient_id=row["patient_id"],
-                image_path=Path(row["image_path"]),
-                label_mask_path=Path(row["label_mask_path"]),
-                spacing_at_level_0=float(declared) if declared else None,
+    with Path(dataset_csv).open(newline="") as handle:
+        for row in csv.DictReader(handle):
+            declared_fold = str(row["validation_fold"]).strip().removeprefix("fold")
+            if int(declared_fold) != fold:
+                continue
+            declared = str(row.get("spacing_at_level_0", "")).strip()
+            records.append(
+                SlideRecord(
+                    sample_id=row["sample_id"],
+                    patient_id=row["patient_id"],
+                    image_path=Path(row["image_path"]),
+                    label_mask_path=Path(row["label_mask_path"]),
+                    spacing_at_level_0=float(declared) if declared else None,
+                )
             )
-        )
+    if not records:
+        raise ValueError(f"No slides with validation_fold {fold} in {dataset_csv}")
     return tuple(records)
-
-
-# -- readers ----------------------------------------------------------------------------
 
 
 def open_slide_rasters(
@@ -575,46 +562,20 @@ def _raster_opener(config) -> Callable[[SlideRecord], SlideRasters]:
 def run_slide_predict(
     *,
     run_dir: str | Path,
-    slides_csv: str | Path,
     output_dir: str | Path,
-    folds: Sequence[int] | None = None,
-    chunk_px: int = 4096,
-    overwrite: bool = False,
-    scratch_dir: str | Path | None = None,
-) -> list[Path]:
-    """Ensemble (all folds by default) inside each slide's ROI mask, for external sets."""
-    from soma.config import load_config
-
-    from beetle.infer import load_fold_predictor
-
-    run_dir = Path(run_dir)
-    config = load_config(run_dir / "config.yaml")
-    records = load_slide_csv(slides_csv)
-    predictor = load_fold_predictor(run_dir, folds=folds)
-    written = export_slides(
-        predictor=predictor,
-        records=records,
-        output_dir=Path(output_dir),
-        open_rasters=_raster_opener(config),
-        chunk_px=chunk_px,
-        overwrite=overwrite,
-        scratch_dir=Path(scratch_dir) if scratch_dir else None,
-    )
-    print(f"Wrote {len(written)} slide masks under {output_dir}")
-    return written
-
-
-def run_cv_predict(
-    *,
-    run_dir: str | Path,
-    output_dir: str | Path,
+    slides_csv: str | Path | None = None,
     dataset_csv: str | Path | None = None,
-    splits_csv: str | Path | None = None,
     folds: Sequence[int] | None = None,
     chunk_px: int = 4096,
     overwrite: bool = False,
     scratch_dir: str | Path | None = None,
 ) -> list[Path]:
+    """External set inside ROI masks when ``slides_csv`` is given, else out-of-fold dev export.
+
+    With ``slides_csv`` the decoders in ``folds`` (all by default) are ensembled and
+    outputs land directly in ``output_dir``. Without it, each fold in ``folds`` loads its
+    own decoder for the slides it holds out and writes to ``output_dir/fold_k``.
+    """
     from soma.config import load_config
 
     from beetle.infer import load_fold_predictor
@@ -622,23 +583,36 @@ def run_cv_predict(
     run_dir = Path(run_dir)
     output_dir = Path(output_dir)
     config = load_config(run_dir / "config.yaml")
-    dataset_csv = Path(dataset_csv or config.dataset_csv)
-    splits_csv = Path(splits_csv or config.splits_csv)
     open_rasters = _raster_opener(config)
+    scratch = Path(scratch_dir) if scratch_dir else None
 
-    written: list[Path] = []
+    if slides_csv is not None:
+        predictor = load_fold_predictor(run_dir, folds=folds)
+        written = export_slides(
+            predictor=predictor,
+            records=load_slide_csv(slides_csv),
+            output_dir=output_dir,
+            open_rasters=open_rasters,
+            chunk_px=chunk_px,
+            overwrite=overwrite,
+            scratch_dir=scratch,
+        )
+        print(f"Wrote {len(written)} slide masks under {output_dir}")
+        return written
+
+    dataset_csv = Path(dataset_csv or config.dataset_csv)
+    written = []
     for fold in tuple(range(NUM_FOLDS)) if folds is None else tuple(folds):
-        records = load_fold_slides(dataset_csv, splits_csv, fold)
         predictor = load_fold_predictor(run_dir, folds=(fold,))
         written += export_fold(
             predictor=predictor,
-            records=records,
+            records=load_fold_slides(dataset_csv, fold),
             fold=fold,
             output_dir=output_dir,
             open_rasters=open_rasters,
             chunk_px=chunk_px,
             overwrite=overwrite,
-            scratch_dir=Path(scratch_dir) if scratch_dir else None,
+            scratch_dir=scratch,
         )
         del predictor
     print(f"Wrote {len(written)} out-of-fold slide masks under {output_dir}")
@@ -646,46 +620,32 @@ def run_cv_predict(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m beetle cv-predict", description=__doc__)
-    parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--dataset-csv", type=Path, default=None, help="defaults to the run config")
-    parser.add_argument("--splits-csv", type=Path, default=None, help="defaults to the run config")
-    parser.add_argument("--folds", type=int, nargs="+", default=None, help="subset of 0..4")
-    parser.add_argument("--chunk-px", type=int, default=4096, help="chunk edge in mask pixels")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument(
-        "--scratch-dir",
-        type=Path,
-        default=None,
-        help="local disk for the per-slide canvas memmap (up to ~20 GB); defaults to the system temp dir",
-    )
-    args = parser.parse_args(argv)
-    run_cv_predict(
-        run_dir=args.run_dir,
-        output_dir=args.output_dir,
-        dataset_csv=args.dataset_csv,
-        splits_csv=args.splits_csv,
-        folds=args.folds,
-        chunk_px=args.chunk_px,
-        overwrite=args.overwrite,
-        scratch_dir=args.scratch_dir,
-    )
-    return 0
-
-
-def slide_main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m beetle slide-predict",
-        description=(
-            "Predict whole slides inside ROI masks with the fold ensemble (all five folds "
-            "by default). Input CSV columns: wsi_path, roi_mask_path, optional sample_id."
-        ),
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--run-dir", type=Path, required=True)
-    parser.add_argument("--slides-csv", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--folds", type=int, nargs="+", default=None, help="subset of 0..4")
+    parser.add_argument(
+        "--slides-csv",
+        type=Path,
+        default=None,
+        help="external set: wsi_path,roi_mask_path[,sample_id] CSV predicted by the fold ensemble",
+    )
+    parser.add_argument(
+        "--dataset-csv",
+        type=Path,
+        default=None,
+        help="development manifest for the out-of-fold export; defaults to the run config",
+    )
+    parser.add_argument(
+        "--folds",
+        type=int,
+        nargs="+",
+        default=None,
+        help="subset of 0..4: folds to export (default mode) or decoders to ensemble (--slides-csv)",
+    )
     parser.add_argument("--chunk-px", type=int, default=4096, help="chunk edge in mask pixels")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument(
@@ -695,10 +655,13 @@ def slide_main(argv: Sequence[str] | None = None) -> int:
         help="local disk for the per-slide canvas memmap (up to ~20 GB); defaults to the system temp dir",
     )
     args = parser.parse_args(argv)
+    if args.slides_csv is not None and args.dataset_csv is not None:
+        parser.error("--dataset-csv applies to the out-of-fold export only; drop it with --slides-csv")
     run_slide_predict(
         run_dir=args.run_dir,
-        slides_csv=args.slides_csv,
         output_dir=args.output_dir,
+        slides_csv=args.slides_csv,
+        dataset_csv=args.dataset_csv,
         folds=args.folds,
         chunk_px=args.chunk_px,
         overwrite=args.overwrite,

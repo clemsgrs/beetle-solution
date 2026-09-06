@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import tifffile
 
-from beetle.cv_predict import (
+from beetle.slide_predict import (
     SlideRasters,
     SlideRecord,
     export_fold,
@@ -128,20 +128,21 @@ def test_write_pyramidal_mask_roundtrips_geometry_and_spacing(tmp_path):
         assert [lvl.shape for lvl in levels] == [(600, 700), (300, 350), (150, 175)]
 
 
-def test_load_fold_slides_selects_the_test_split(tmp_path):
+def test_load_fold_slides_selects_the_manifest_validation_fold(tmp_path):
+    import pytest
+
     dataset = tmp_path / "dataset.csv"
     dataset.write_text(
         "sample_id,image_path,label_mask_path,patient_id,validation_fold,spacing_at_level_0\n"
         "a,/x/a.tif,/x/a_mask.tif,p1,fold0,\n"
         "b,/x/b.tif,/x/b_mask.tif,p2,fold1,0.657\n"
     )
-    splits = tmp_path / "splits.csv"
-    splits.write_text(
-        "sample_id,split,fold\na,test,0\nb,tune,0\na,train,1\nb,test,1\n"
-    )
-    (rec,) = load_fold_slides(dataset, splits, 1)
+    (rec,) = load_fold_slides(dataset, 1)
     assert rec == SlideRecord("b", "p2", rec.image_path, rec.label_mask_path, 0.657)
     assert str(rec.image_path) == "/x/b.tif"
+    assert [r.sample_id for r in load_fold_slides(dataset, 0)] == ["a"]
+    with pytest.raises(ValueError):
+        load_fold_slides(dataset, 3)
 
 
 def test_export_fold_writes_masks_and_summary_and_resumes(tmp_path):
@@ -200,7 +201,7 @@ def test_write_pyramidal_mask_can_write_deflate_without_imagecodecs(tmp_path):
 
 
 def test_candidate_chunks_dilates_the_overview_and_covers_borders():
-    from beetle.cv_predict import candidate_chunks
+    from beetle.slide_predict import candidate_chunks
 
     overview = np.zeros((10, 10), dtype=np.uint8)
     overview[4, 4] = 1  # level-0 pixel (16, 16) with downsample 4 -> chunk (0, 0) plus dilation
@@ -234,7 +235,7 @@ def test_predict_slide_mask_uses_the_overview_to_avoid_reading_empty_chunks():
 
 
 def test_overview_level_picks_the_coarsest_level_within_the_cap():
-    from beetle.cv_predict import _overview_level
+    from beetle.slide_predict import _overview_level
 
     assert _overview_level([(1.0, 1.0), (2.0, 2.0), (4.0, 4.0), (16.0, 16.0), (32.0, 32.0)], 16.0) == 3
     assert _overview_level([(1.0, 1.0)], 16.0) == 0
@@ -245,7 +246,7 @@ def test_open_slide_rasters_stamps_exception_masks_with_the_slide_override(monke
     import hs2p.wsi.masks as masks_mod
     import hs2p.wsi.wsi as wsi_mod
 
-    from beetle.cv_predict import open_slide_rasters
+    from beetle.slide_predict import open_slide_rasters
 
     class FakeWSI:
         def __init__(self, path, backend, spacing_at_level_0=None):
