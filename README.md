@@ -26,7 +26,7 @@ uv run pytest -q
 
 Virchow2 is gated. Request access on its model page. Then download the exact revision named in `configs/base.yaml`.
 
-The `curate`, `extract`, and `train` commands run from a repository checkout: they read `configs/` and write `provenance/`. `infer` only needs a run directory, so it also works from a plain package install.
+The `curate`, `extract`, and `train` commands run from a repository checkout: they read `configs/` and write `provenance/`. `infer` and `cv-predict` only need a run directory, so they also work from a plain package install.
 
 ## Inference
 
@@ -53,6 +53,35 @@ python -m beetle infer \
 ```
 
 `infer` averages the five fold softmax outputs over Hann-blended sliding tiles, checks every PNG against the BEETLE contract, and writes a deterministic flat ZIP.
+
+## Out-of-fold slide masks
+
+To score the development cohort on exactly the annotated pixels (for example against another model that was evaluated on the Zenodo annotation rasters), export one whole-slide mask per held-out slide:
+
+```bash
+python -m beetle cv-predict \
+  --run-dir run \
+  --dataset-csv data/beetle/curated_slide_manifest/dataset.csv \
+  --splits-csv data/beetle/curated_slide_manifest/splits.csv \
+  --output-dir /path/to/oof_masks
+```
+
+For each fold, `cv-predict` loads only that fold's decoder and predicts the slides the fold holds out. The slide's annotation raster is the inference mask: annotated pixels get submission labels 1-4, everything else is 0. Each output `fold_k/<slide>.tif` is a pyramidal tiled TIFF with the annotation raster's level-0 dimensions and spacing, and `fold_k/summary.csv` lists per-slide annotated and predicted pixel counts. Existing outputs are skipped, so an interrupted export resumes; pass `--folds 0 1` to run a subset.
+
+Only chunks that a coarse level of the annotation raster shows as annotated are read and predicted, so a slide costs roughly its annotated area, not its full extent. The full-resolution canvas is a memmap of up to ~20 GB per slide in the system temp directory; pass `--scratch-dir` to place it on another local disk. Keep it off network shares.
+
+## External slides inside ROI masks
+
+For an external set scored inside ROI masks (for example the TIGER leaderboard-1 test sets), list the pairs in a CSV with `wsi_path` and `roi_mask_path` columns and run the five-fold ensemble:
+
+```bash
+python -m beetle slide-predict \
+  --run-dir run \
+  --slides-csv file_paths_tiger_final.csv \
+  --output-dir /path/to/tiger_final_masks
+```
+
+Outputs follow the same conventions as `cv-predict`: one pyramidal TIFF per slide named after the WSI stem, labels 1-4 inside the mask and 0 outside, plus `summary.csv`.
 
 ## Training
 

@@ -226,3 +226,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Collaborator handoff packages (large, generated)
+handoff/

@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Clement Grisi" }]
 dependencies = [
   "hs2p==4.4.2",
+  "imagecodecs>=2024.1.1",
   "numpy==1.26.4",
   "Pillow>=10,<12",
   "PyYAML>=6,<7",
