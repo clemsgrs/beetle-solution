@@ -7,7 +7,6 @@ from beetle.slide_predict import (
     SlideRasters,
     SlideRecord,
     export_fold,
-    load_fold_slides,
     load_slide_csv,
     plan_read_spacing,
     predict_slide_mask,
@@ -128,7 +127,7 @@ def test_write_pyramidal_mask_roundtrips_geometry_and_spacing(tmp_path):
         assert [lvl.shape for lvl in levels] == [(600, 700), (300, 350), (150, 175)]
 
 
-def test_load_fold_slides_selects_the_manifest_validation_fold(tmp_path):
+def test_load_slide_csv_reads_the_curated_manifest_with_folds(tmp_path):
     import pytest
 
     dataset = tmp_path / "dataset.csv"
@@ -137,12 +136,18 @@ def test_load_fold_slides_selects_the_manifest_validation_fold(tmp_path):
         "a,/x/a.tif,/x/a_mask.tif,p1,fold0,\n"
         "b,/x/b.tif,/x/b_mask.tif,p2,fold1,0.657\n"
     )
-    (rec,) = load_fold_slides(dataset, 1)
-    assert rec == SlideRecord("b", "p2", rec.image_path, rec.label_mask_path, 0.657)
-    assert str(rec.image_path) == "/x/b.tif"
-    assert [r.sample_id for r in load_fold_slides(dataset, 0)] == ["a"]
-    with pytest.raises(ValueError):
-        load_fold_slides(dataset, 3)
+    a_rec, b_rec = load_slide_csv(dataset)
+    assert b_rec == SlideRecord("b", "p2", b_rec.image_path, b_rec.label_mask_path, 0.657, 1)
+    assert str(b_rec.image_path) == "/x/b.tif" and a_rec.fold == 0 and a_rec.spacing_at_level_0 is None
+
+    mixed = tmp_path / "mixed.csv"
+    mixed.write_text("wsi_path,roi_mask_path,fold\n/x/a.tif,/x/a_m.tif,2\n/x/b.tif,/x/b_m.tif,\n")
+    with pytest.raises(ValueError, match="all or none"):
+        load_slide_csv(mixed)
+    with pytest.raises(ValueError, match="column"):
+        bad = tmp_path / "bad.csv"
+        bad.write_text("path,mask\n/x/a.tif,/x/a_m.tif\n")
+        load_slide_csv(bad)
 
 
 def test_export_fold_writes_masks_and_summary_and_resumes(tmp_path):
@@ -188,6 +193,7 @@ def test_load_slide_csv_defaults_sample_id_to_the_wsi_stem(tmp_path):
     assert [r.sample_id for r in records] == ["202B", "TCGA-D8-A27G-01Z-00-DX1.04FC"]
     assert records[0].label_mask_path.name == "202B_roi_mask.tif"
     assert records[0].spacing_at_level_0 is None and records[0].patient_id == ""
+    assert all(r.fold is None for r in records)
 
 
 def test_write_pyramidal_mask_can_write_deflate_without_imagecodecs(tmp_path):
