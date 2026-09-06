@@ -26,8 +26,12 @@ from beetle.contract import (
 from beetle.record import record_inference
 
 
-def load_fold_predictor(run_dir: Path):
-    """Load the run's recipe, the frozen encoder, and all five fold decoders."""
+def load_fold_predictor(run_dir: Path, folds: Sequence[int] | None = None):
+    """Load the run's recipe, the frozen encoder, and the requested fold decoders.
+
+    ``folds`` defaults to all five folds (the submission ensemble). Pass a single fold
+    to score that fold's own held-out slides, as the cross-validation export does.
+    """
     from soma.config import load_config
     from soma.dense.live import build_live_segmentation_source
     from soma.dense.predict import (
@@ -38,9 +42,10 @@ def load_fold_predictor(run_dir: Path):
     config = load_config(run_dir / "config.yaml")
     if config.decoder is None or config.task is None or config.encoder is None:
         raise ValueError("Inference requires encoder, decoder, and task config")
-    checkpoints = tuple(
-        run_dir / f"fold_{fold}" / "best_model.pt" for fold in range(NUM_FOLDS)
-    )
+    selected = tuple(range(NUM_FOLDS)) if folds is None else tuple(int(f) for f in folds)
+    if not selected or any(f < 0 or f >= NUM_FOLDS for f in selected):
+        raise ValueError(f"folds must be a non-empty subset of 0..{NUM_FOLDS - 1}: {selected}")
+    checkpoints = tuple(run_dir / f"fold_{fold}" / "best_model.pt" for fold in selected)
     missing = [str(path) for path in checkpoints if not path.is_file()]
     if missing:
         raise FileNotFoundError(f"Missing fold checkpoints: {missing}")
