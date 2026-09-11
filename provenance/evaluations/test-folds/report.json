@@ -1,0 +1,751 @@
+{
+  "generated_at": "2026-09-11T10:58:26+00:00",
+  "inputs": {
+    "commands": {
+      "test": [
+        "/maindisk/clement/beetle-attempt-03-20260908/venv/bin/python",
+        "-m",
+        "beetle.comparison",
+        "--attempt",
+        "attempt-01=/maindisk/clement/beetle-test-folds-20260911/scores/attempt-01",
+        "--attempt",
+        "attempt-02=/maindisk/clement/beetle-test-folds-20260911/scores/attempt-02",
+        "--attempt",
+        "attempt-03=/maindisk/clement/beetle-test-folds-20260911/scores/attempt-03",
+        "--sample-patient-csv",
+        "/maindisk/clement/beetle-attempt-03-20260908/runs/experiments/dataset-virchow2-slide-segmentation_493412b85759/runs/attempt-03-heavy-conv-20260908-r1/segmentation_rois/roi_manifest.csv",
+        "--split",
+        "test",
+        "--group-csv",
+        "/maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/dataset.csv",
+        "--group-column",
+        "source",
+        "--output",
+        "/maindisk/clement/beetle-test-folds-20260911/report/test_comparison.json"
+      ],
+      "tune": [
+        "/maindisk/clement/beetle-attempt-03-20260908/venv/bin/python",
+        "-m",
+        "beetle.comparison",
+        "--attempt",
+        "attempt-01=/data/pathology/projects/clement/code/beetle-solution/artifacts/releases/attempt-01/development/cv_results.json",
+        "--attempt",
+        "attempt-02=/maindisk/clement/soma-beetle-campaign-20260827/data/beetle/runs/attempt-02/experiments/dataset-virchow2-slide-segmentation_98e06e43d3e0/runs/attempt-02-four-block-20260830",
+        "--attempt",
+        "attempt-03=/maindisk/clement/beetle-attempt-03-20260908/runs/experiments/dataset-virchow2-slide-segmentation_493412b85759/runs/attempt-03-heavy-conv-20260908-r1",
+        "--sample-patient-csv",
+        "/maindisk/clement/beetle-attempt-03-20260908/runs/experiments/dataset-virchow2-slide-segmentation_493412b85759/runs/attempt-03-heavy-conv-20260908-r1/segmentation_rois/roi_manifest.csv",
+        "--split",
+        "tune",
+        "--group-csv",
+        "/maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/dataset.csv",
+        "--group-column",
+        "source",
+        "--output",
+        "/maindisk/clement/beetle-test-folds-20260911/report/tune_comparison.json"
+      ]
+    },
+    "test_comparison_sha256": "4ddbd4946ebc2ac556b590cfebc37c34041792d9e75c4b48eb1c8e67fe5d2f11",
+    "tune_comparison_sha256": "8ca6e665a911d232ab9c31228e4cf2e38796b07bab0a4b9e02d2516756a77a69"
+  },
+  "issue": "https://github.com/clemsgrs/beetle-solution/issues/7",
+  "parity_gate": {
+    "attempt-01": {
+      "macro_dice_recorded": 0.872032687256,
+      "macro_dice_rescored": 0.872032687256,
+      "pooled_cells_abs_diff_fraction": 0.0,
+      "rescored_metrics_dgmd": 0.8720327615737915,
+      "roi_count": 22192,
+      "total_pixels_equal": true
+    },
+    "attempt-03": {
+      "differing_pixel_fraction": 0.0,
+      "macro_dice_recorded": 0.872388291041,
+      "macro_dice_rescored": 0.872388291041,
+      "metrics_json_tune_dgmd": 0.8723883032798767,
+      "rescored_metrics_dgmd": 0.8723883032798767,
+      "roi_count": 22192,
+      "rois_identical": 22192,
+      "same_roi_set": true
+    }
+  },
+  "protocol": "Model k (selected on tune = organizer fold k+1) scored on organizer fold k, which no model k training or selection step saw. Per-source pooling is descriptive; source confounds case mix.",
+  "schema_version": 1,
+  "test": {
+    "attempts": {
+      "attempt-01": {
+        "fold_scores": [
+          0.842188419275,
+          0.824976182648,
+          0.905511224748,
+          0.893864144994,
+          0.912604974334
+        ],
+        "mean": 0.8758289892,
+        "sample_standard_deviation": 0.039612090684
+      },
+      "attempt-02": {
+        "fold_scores": [
+          0.834391253106,
+          0.820819929433,
+          0.898247343527,
+          0.891833146585,
+          0.907275057283
+        ],
+        "mean": 0.870513345987,
+        "sample_standard_deviation": 0.03984147706
+      },
+      "attempt-03": {
+        "fold_scores": [
+          0.806058815572,
+          0.808946311465,
+          0.904902185296,
+          0.894620757121,
+          0.906456569794
+        ],
+        "mean": 0.86419692785,
+        "sample_standard_deviation": 0.051964111218
+      }
+    },
+    "candidate": "attempt-03",
+    "comparisons": {
+      "attempt-02_minus_attempt-01": {
+        "folds_improved": 0,
+        "mean_delta": -0.005315643213,
+        "paired_fold_deltas": [
+          -0.007797166169,
+          -0.004156253215,
+          -0.007263881221,
+          -0.002030998409,
+          -0.005329917051
+        ],
+        "patient_bootstrap": {
+          "primary": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.012498237314,
+              -6.3302405e-05
+            ],
+            "pooled_macro_dice_delta": -0.006338632425,
+            "seed": 0
+          },
+          "sensitivity": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.012498423264,
+              -8.9931532e-05
+            ],
+            "pooled_macro_dice_delta": -0.006342673752,
+            "seed": 0
+          }
+        }
+      },
+      "attempt-03_minus_attempt-01": {
+        "folds_improved": 1,
+        "mean_delta": -0.01163206135,
+        "paired_fold_deltas": [
+          -0.036129603703,
+          -0.016029871183,
+          -0.000609039452,
+          0.000756612127,
+          -0.00614840454
+        ],
+        "patient_bootstrap": {
+          "primary": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.020640205981,
+              -0.005132224356
+            ],
+            "pooled_macro_dice_delta": -0.012265777581,
+            "seed": 0
+          },
+          "sensitivity": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.020677585178,
+              -0.005030120813
+            ],
+            "pooled_macro_dice_delta": -0.012271296338,
+            "seed": 0
+          }
+        }
+      },
+      "attempt-03_minus_attempt-02": {
+        "folds_improved": 2,
+        "mean_delta": -0.006316418137,
+        "paired_fold_deltas": [
+          -0.028332437534,
+          -0.011873617968,
+          0.006654841769,
+          0.002787610536,
+          -0.000818487489
+        ],
+        "patient_bootstrap": {
+          "primary": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.014263050952,
+              0.001584763782
+            ],
+            "pooled_macro_dice_delta": -0.005927145156,
+            "seed": 0
+          },
+          "sensitivity": {
+            "draws": 10000,
+            "macro_dice_delta_percentile_95_ci": [
+              -0.014586638614,
+              0.001554344724
+            ],
+            "pooled_macro_dice_delta": -0.005928622586,
+            "seed": 0
+          }
+        }
+      }
+    },
+    "formal_comparator": "attempt-01",
+    "group_column": "source",
+    "patient_bootstrap": {
+      "primary": {
+        "attempts": {
+          "attempt-01": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.844162427288,
+              0.903994298184
+            ],
+            "seed": 0
+          },
+          "attempt-02": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.836028981141,
+              0.899876449716
+            ],
+            "seed": 0
+          },
+          "attempt-03": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.830075962317,
+              0.893618452713
+            ],
+            "seed": 0
+          }
+        },
+        "patient_count": 527
+      },
+      "sensitivity": {
+        "attempts": {
+          "attempt-01": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.842914901801,
+              0.904315967358
+            ],
+            "seed": 0
+          },
+          "attempt-02": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.83510518415,
+              0.90009501371
+            ],
+            "seed": 0
+          },
+          "attempt-03": {
+            "draws": 10000,
+            "macro_dice_percentile_95_ci": [
+              0.82893386436,
+              0.893637432271
+            ],
+            "seed": 0
+          }
+        },
+        "evaluation_only": true,
+        "excluded_patient_ids": [
+          "TCGA-OL-A66I",
+          "TCGA-OL-A66P",
+          "TCGA-OL-A6VO"
+        ],
+        "patient_count": 524
+      }
+    },
+    "per_group": {
+      "jb": {
+        "attempts": {
+          "attempt-01": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.762450450225,
+              "necrosis": 0.78492438654,
+              "non_invasive_epithelium": 0.67600375926,
+              "other": 0.909211185302
+            },
+            "macro_dice": 0.783147445332,
+            "pixel_micro_dice": 0.848755032154
+          },
+          "attempt-02": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.766521656793,
+              "necrosis": 0.745270840835,
+              "non_invasive_epithelium": 0.638752138475,
+              "other": 0.913163238027
+            },
+            "macro_dice": 0.765926968533,
+            "pixel_micro_dice": 0.848857025594
+          },
+          "attempt-03": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.767512914178,
+              "necrosis": 0.733574773193,
+              "non_invasive_epithelium": 0.620359261116,
+              "other": 0.917641310233
+            },
+            "macro_dice": 0.75977206468,
+            "pixel_micro_dice": 0.850178718157
+          }
+        },
+        "patient_count": 18
+      },
+      "nki": {
+        "attempts": {
+          "attempt-01": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.926128243993,
+              "necrosis": 0.897170255415,
+              "non_invasive_epithelium": 0.884580839262,
+              "other": 0.953217992499
+            },
+            "macro_dice": 0.915274332792,
+            "pixel_micro_dice": 0.935494142252
+          },
+          "attempt-02": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.921193766753,
+              "necrosis": 0.897081938509,
+              "non_invasive_epithelium": 0.879201048985,
+              "other": 0.951388607825
+            },
+            "macro_dice": 0.912216340518,
+            "pixel_micro_dice": 0.93272053372
+          },
+          "attempt-03": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.926120898048,
+              "necrosis": 0.880320918948,
+              "non_invasive_epithelium": 0.895187006254,
+              "other": 0.950448802219
+            },
+            "macro_dice": 0.913019406367,
+            "pixel_micro_dice": 0.933456434621
+          }
+        },
+        "patient_count": 101
+      },
+      "rumc": {
+        "attempts": {
+          "attempt-01": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.84030805986,
+              "necrosis": 0.736345196977,
+              "non_invasive_epithelium": 0.899954788814,
+              "other": 0.980671120882
+            },
+            "macro_dice": 0.864319791633,
+            "pixel_micro_dice": 0.946223197403
+          },
+          "attempt-02": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.822754348422,
+              "necrosis": 0.717473371108,
+              "non_invasive_epithelium": 0.891871568094,
+              "other": 0.97784705798
+            },
+            "macro_dice": 0.852486586401,
+            "pixel_micro_dice": 0.940407397678
+          },
+          "attempt-03": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.817750660664,
+              "necrosis": 0.721795454137,
+              "non_invasive_epithelium": 0.878636742648,
+              "other": 0.979178338275
+            },
+            "macro_dice": 0.849340298931,
+            "pixel_micro_dice": 0.93892512842
+          }
+        },
+        "patient_count": 214
+      },
+      "sch": {
+        "attempts": {
+          "attempt-01": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.831956153056,
+              "necrosis": 0.86517834409,
+              "non_invasive_epithelium": 0.911669593633,
+              "other": 0.974691777353
+            },
+            "macro_dice": 0.895873967033,
+            "pixel_micro_dice": 0.951375423509
+          },
+          "attempt-02": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.817466283555,
+              "necrosis": 0.876187221517,
+              "non_invasive_epithelium": 0.901882839309,
+              "other": 0.974702482998
+            },
+            "macro_dice": 0.892559706845,
+            "pixel_micro_dice": 0.949267595252
+          },
+          "attempt-03": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.829034564714,
+              "necrosis": 0.856324113265,
+              "non_invasive_epithelium": 0.900009852218,
+              "other": 0.972699229231
+            },
+            "macro_dice": 0.889516939857,
+            "pixel_micro_dice": 0.947418535676
+          }
+        },
+        "patient_count": 30
+      },
+      "tcga": {
+        "attempts": {
+          "attempt-01": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.880476416609,
+              "necrosis": 0.774407746035,
+              "non_invasive_epithelium": 0.495760375323,
+              "other": 0.948720085981
+            },
+            "macro_dice": 0.774841155987,
+            "pixel_micro_dice": 0.90776600864
+          },
+          "attempt-02": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.884852764286,
+              "necrosis": 0.836847613149,
+              "non_invasive_epithelium": 0.530254606901,
+              "other": 0.9509666276
+            },
+            "macro_dice": 0.800730402984,
+            "pixel_micro_dice": 0.912923525719
+          },
+          "attempt-03": {
+            "dice_per_class": {
+              "invasive_epithelium": 0.863035271967,
+              "necrosis": 0.808766298806,
+              "non_invasive_epithelium": 0.462173162571,
+              "other": 0.948814206179
+            },
+            "macro_dice": 0.770697234881,
+            "pixel_micro_dice": 0.900666600791
+          }
+        },
+        "patient_count": 164
+      }
+    },
+    "pooled_metrics": {
+      "attempt-01": {
+        "dice_per_class": {
+          "invasive_epithelium": 0.856144401472,
+          "necrosis": 0.783113199446,
+          "non_invasive_epithelium": 0.893187684533,
+          "other": 0.976210714982
+        },
+        "macro_dice": 0.877164000108,
+        "pixel_micro_dice": 0.942873783995
+      },
+      "attempt-02": {
+        "dice_per_class": {
+          "invasive_epithelium": 0.844344837451,
+          "necrosis": 0.779464720485,
+          "non_invasive_epithelium": 0.88525838447,
+          "other": 0.974233528325
+        },
+        "macro_dice": 0.870825367683,
+        "pixel_micro_dice": 0.938634033035
+      },
+      "attempt-03": {
+        "dice_per_class": {
+          "invasive_epithelium": 0.83812366322,
+          "necrosis": 0.774301708004,
+          "non_invasive_epithelium": 0.87240624691,
+          "other": 0.974761271973
+        },
+        "macro_dice": 0.864898222527,
+        "pixel_micro_dice": 0.936298874631
+      }
+    },
+    "schema_version": 1
+  },
+  "tune_per_source": {
+    "jb": {
+      "attempts": {
+        "attempt-01": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.783497701665,
+            "necrosis": 0.741868805512,
+            "non_invasive_epithelium": 0.672229962432,
+            "other": 0.915884842756
+          },
+          "macro_dice": 0.778370328091,
+          "pixel_micro_dice": 0.860809634936
+        },
+        "attempt-02": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.783426722491,
+            "necrosis": 0.754275575878,
+            "non_invasive_epithelium": 0.655939833821,
+            "other": 0.913976396381
+          },
+          "macro_dice": 0.776904632143,
+          "pixel_micro_dice": 0.857659459152
+        },
+        "attempt-03": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.786986697392,
+            "necrosis": 0.765800287359,
+            "non_invasive_epithelium": 0.664597776714,
+            "other": 0.911936270752
+          },
+          "macro_dice": 0.782330258054,
+          "pixel_micro_dice": 0.857160728968
+        }
+      },
+      "patient_count": 18
+    },
+    "nki": {
+      "attempts": {
+        "attempt-01": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.927285544198,
+            "necrosis": 0.890446175403,
+            "non_invasive_epithelium": 0.891548452998,
+            "other": 0.958655110623
+          },
+          "macro_dice": 0.916983820805,
+          "pixel_micro_dice": 0.938785792736
+        },
+        "attempt-02": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.932878575784,
+            "necrosis": 0.892184949927,
+            "non_invasive_epithelium": 0.889145196266,
+            "other": 0.959750409973
+          },
+          "macro_dice": 0.918489782988,
+          "pixel_micro_dice": 0.941298481557
+        },
+        "attempt-03": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.935397041077,
+            "necrosis": 0.90068891653,
+            "non_invasive_epithelium": 0.8939880836,
+            "other": 0.960160583337
+          },
+          "macro_dice": 0.922558656136,
+          "pixel_micro_dice": 0.943204044666
+        }
+      },
+      "patient_count": 101
+    },
+    "rumc": {
+      "attempts": {
+        "attempt-01": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.876321429402,
+            "necrosis": 0.726885739398,
+            "non_invasive_epithelium": 0.91789188559,
+            "other": 0.982537612522
+          },
+          "macro_dice": 0.875909166728,
+          "pixel_micro_dice": 0.954351409976
+        },
+        "attempt-02": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.87824077311,
+            "necrosis": 0.737543017577,
+            "non_invasive_epithelium": 0.918900717944,
+            "other": 0.98244414484
+          },
+          "macro_dice": 0.879282163368,
+          "pixel_micro_dice": 0.954859539473
+        },
+        "attempt-03": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.886877977679,
+            "necrosis": 0.743966107334,
+            "non_invasive_epithelium": 0.929257125761,
+            "other": 0.982281593124
+          },
+          "macro_dice": 0.885595700975,
+          "pixel_micro_dice": 0.957414176212
+        }
+      },
+      "patient_count": 214
+    },
+    "sch": {
+      "attempts": {
+        "attempt-01": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.838750721029,
+            "necrosis": 0.873120594454,
+            "non_invasive_epithelium": 0.916172397056,
+            "other": 0.97719677047
+          },
+          "macro_dice": 0.901310120752,
+          "pixel_micro_dice": 0.954389681148
+        },
+        "attempt-02": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.842610660674,
+            "necrosis": 0.88036402108,
+            "non_invasive_epithelium": 0.918446221703,
+            "other": 0.977526124784
+          },
+          "macro_dice": 0.90473675706,
+          "pixel_micro_dice": 0.955495801127
+        },
+        "attempt-03": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.827857667531,
+            "necrosis": 0.870954133652,
+            "non_invasive_epithelium": 0.909169141195,
+            "other": 0.975177264447
+          },
+          "macro_dice": 0.895789551706,
+          "pixel_micro_dice": 0.950948670262
+        }
+      },
+      "patient_count": 30
+    },
+    "tcga": {
+      "attempts": {
+        "attempt-01": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.8658748959,
+            "necrosis": 0.82458733299,
+            "non_invasive_epithelium": 0.457072153121,
+            "other": 0.951262486863
+          },
+          "macro_dice": 0.774699217218,
+          "pixel_micro_dice": 0.903804863833
+        },
+        "attempt-02": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.871062338483,
+            "necrosis": 0.796549638286,
+            "non_invasive_epithelium": 0.498218546917,
+            "other": 0.951178511534
+          },
+          "macro_dice": 0.779252258805,
+          "pixel_micro_dice": 0.905649471245
+        },
+        "attempt-03": {
+          "dice_per_class": {
+            "invasive_epithelium": 0.852600944032,
+            "necrosis": 0.79148302079,
+            "non_invasive_epithelium": 0.415021467751,
+            "other": 0.947146380757
+          },
+          "macro_dice": 0.751562953333,
+          "pixel_micro_dice": 0.894048486605
+        }
+      },
+      "patient_count": 164
+    }
+  },
+  "tune_test_gap": {
+    "attempt-01": {
+      "folds_lower_on_test": 3,
+      "mean_test_minus_tune": -0.010296533025,
+      "pooled_macro_dice": {
+        "test": 0.877164000108,
+        "tune": 0.886079878938
+      },
+      "test_fold_scores": [
+        0.842188419275,
+        0.824976182648,
+        0.905511224748,
+        0.893864144994,
+        0.912604974334
+      ],
+      "test_minus_tune_by_fold": [
+        -0.029844267981,
+        -0.077007355822,
+        0.008274406207,
+        -0.021825720266,
+        0.068920272739
+      ],
+      "tune_fold_scores": [
+        0.872032687256,
+        0.90198353847,
+        0.897236818541,
+        0.91568986526,
+        0.843684701595
+      ]
+    },
+    "attempt-02": {
+      "folds_lower_on_test": 4,
+      "mean_test_minus_tune": -0.017505889351,
+      "pooled_macro_dice": {
+        "test": 0.870825367683,
+        "tune": 0.888692784345
+      },
+      "test_fold_scores": [
+        0.834391253106,
+        0.820819929433,
+        0.898247343527,
+        0.891833146585,
+        0.907275057283
+      ],
+      "test_minus_tune_by_fold": [
+        -0.031438411742,
+        -0.085174439679,
+        -0.003732731512,
+        -0.024678654791,
+        0.057494790971
+      ],
+      "tune_fold_scores": [
+        0.865829664848,
+        0.905994369112,
+        0.901980075039,
+        0.916511801376,
+        0.849780266312
+      ]
+    },
+    "attempt-03": {
+      "folds_lower_on_test": 3,
+      "mean_test_minus_tune": -0.025222238092,
+      "pooled_macro_dice": {
+        "test": 0.864898222527,
+        "tune": 0.89064035862
+      },
+      "test_fold_scores": [
+        0.806058815572,
+        0.808946311465,
+        0.904902185296,
+        0.894620757121,
+        0.906456569794
+      ],
+      "test_minus_tune_by_fold": [
+        -0.066329475469,
+        -0.099662377754,
+        0.001017477509,
+        -0.020228930863,
+        0.059092116118
+      ],
+      "tune_fold_scores": [
+        0.872388291041,
+        0.908608689219,
+        0.903884707787,
+        0.914849687984,
+        0.847364453676
+      ]
+    }
+  }
+}
