@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-09-11T08:20:40+00:00",
+  "run_dir": "/maindisk/clement/beetle-attempt-03-20260908/runs/experiments/dataset-virchow2-slide-segmentation_493412b85759/runs/attempt-03-heavy-conv-20260908-r1",
+  "soma": {
+    "commit": "4a3d6c84f9a3dc2832e585c6884a95d14a0f79bc",
+    "version": "1.11.2"
+  }
+}

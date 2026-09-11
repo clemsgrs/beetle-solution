@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-01",
+  "source": "https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/",
+  "recorded_at": "2026-09-11",
+  "note": "External test set: 170 ROIs from three centers unseen in development. The official aggregation formula is unpublished; overall_dice is not the mean of the four class Dice values (0.8233).",
+  "metrics": {
+    "overall_dice": 0.9063,
+    "other_dice": 0.9518,
+    "non_invasive_epith_dice": 0.7476,
+    "invasive_epith_dice": 0.8392,
+    "necrosis_dice": 0.7546,
+    "biopticka_dice": 0.9061,
+    "scdc_dice": 0.8951,
+    "uwmed_dice": 0.9185,
+    "ilc_invasive_epith_dice": 0.8432,
+    "nst_invasive_epith_dice": 0.8377
+  }
+}
