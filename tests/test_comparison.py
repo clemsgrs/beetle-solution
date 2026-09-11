@@ -11,11 +11,11 @@ IMPERFECT = [[4, 1, 0, 0], [0, 4, 1, 0], [0, 0, 4, 1], [1, 0, 0, 4]]
 PERFECT = [[5, 0, 0, 0], [0, 5, 0, 0], [0, 0, 5, 0], [0, 0, 0, 5]]
 
 
-def _write_run(run_dir, matrix):
+def _write_run(run_dir, matrix, split="tune"):
     for fold in range(5):
         fold_dir = run_dir / f"fold_{fold}"
-        fold_dir.mkdir(parents=True)
-        (fold_dir / "confusion_evidence_tune.json").write_text(json.dumps({
+        fold_dir.mkdir(parents=True, exist_ok=True)
+        (fold_dir / f"confusion_evidence_{split}.json").write_text(json.dumps({
             "schema_version": 1,
             "records": [{
                 "sample_id": f"roi-{fold}",
@@ -152,4 +152,64 @@ def test_cli_passes_attempts_in_the_given_order(tmp_path, monkeypatch):
         ("attempt-01", Path("cv_results.json")),
         ("attempt-03", Path("run")),
     ]
+    assert captured["split"] == "tune"
     assert json.loads(output.read_text()) == {"ok": True}
+
+
+def test_test_split_reads_scored_test_evidence_and_refuses_tune_records(sources):
+    tmp_path, cv_results, mapping = sources
+    baseline = _write_run(tmp_path / "a01", IMPERFECT, split="test")
+    candidate = _write_run(tmp_path / "a03", PERFECT, split="test")
+    _write_run(tmp_path / "a03", IMPERFECT, split="tune")
+    cohort = dict(
+        sample_patient_csv=mapping,
+        spacing_exception_patient_ids=(),
+        primary_patient_count=5,
+        sensitivity_patient_count=5,
+        bootstrap_draws=5,
+    )
+
+    report = comparison.build_report(
+        attempt_sources=[("attempt-01", baseline), ("attempt-03", candidate)],
+        split="test",
+        **cohort,
+    )
+
+    assert report["attempts"]["attempt-03"]["fold_scores"] == [1.0] * 5
+    with pytest.raises(ValueError, match="tune-fold scores"):
+        comparison.build_report(
+            attempt_sources=[("attempt-01", cv_results), ("attempt-03", candidate)],
+            split="test",
+            **cohort,
+        )
+
+
+def test_report_pools_patients_within_each_group(sources):
+    tmp_path, cv_results, mapping = sources
+
+    report = comparison.build_report(
+        attempt_sources=[
+            ("attempt-01", cv_results),
+            ("attempt-03", _write_run(tmp_path / "a03", PERFECT)),
+        ],
+        sample_patient_csv=mapping,
+        spacing_exception_patient_ids=(),
+        primary_patient_count=5,
+        sensitivity_patient_count=5,
+        bootstrap_draws=5,
+        patient_groups={"patient-0": "jb", "patient-1": "jb", "patient-2": "rumc",
+                        "patient-3": "rumc", "patient-4": "rumc"},
+    )
+
+    assert list(report["per_group"]) == ["jb", "rumc"]
+    assert report["per_group"]["jb"]["patient_count"] == 2
+    assert report["per_group"]["jb"]["attempts"]["attempt-01"]["macro_dice"] == 0.8
+    assert report["per_group"]["rumc"]["attempts"]["attempt-03"]["macro_dice"] == 1.0
+
+
+def test_patient_groups_refuse_a_patient_spanning_two_groups(tmp_path):
+    dataset = tmp_path / "dataset.csv"
+    dataset.write_text("sample_id,patient_id,source\nwsi1,p1,rumc\nwsi2,p1,nki\n")
+
+    with pytest.raises(ValueError, match="spans several source values"):
+        comparison.read_patient_groups(dataset, "source")
