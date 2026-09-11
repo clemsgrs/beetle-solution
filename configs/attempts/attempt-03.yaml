@@ -1,0 +1,16 @@
+# Attempt 03: context pooling and learned upsampling on the Attempt 01 cache.
+run:
+  output_root: data/beetle/runs/attempt-03
+  tags: [beetle, virchow2, attempt-03]
+
+decoder:
+  name: heavy_conv
+  params:
+    hidden_dim: 256
+    num_upsample_blocks: 2
+    num_groups: 32
+    pool_scales: [1, 2, 3, 6]
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null

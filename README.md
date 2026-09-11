@@ -10,10 +10,11 @@ Attempt 01 uses a [Virchow2](https://huggingface.co/paige-ai/Virchow2) encoder w
 |---|---|---|---|---|---|
 | attempt-01 | `configs/attempts/attempt-01.yaml` | 0.8861 | 0.9063 | `attempt-01` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-01/beetle-attempt-01-weights.zip) |
 | attempt-02 | `configs/attempts/attempt-02.yaml` | 0.8880 | — | `attempt-02` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-02/beetle-attempt-02-weights.zip) |
+| attempt-03 | `configs/attempts/attempt-03.yaml` | 0.8894 | — | `attempt-03` | [download](https://github.com/clemsgrs/beetle-solution/releases/download/attempt-03/beetle-attempt-03-weights.zip) |
 
 Dev Dice is the mean dataset-global mean class Dice over the five development folds. The leaderboard score is the official `overall_dice` from the [challenge leaderboard](https://beetle.grand-challenge.org/evaluation/beetle/leaderboard/). Attempt 01's evidence is in `provenance/attempts/attempt-01/`.
 
-The Attempt 01 release also provides the five-fold CV evidence and the submitted External prediction ZIP as separate assets. Attempt 02 is a development-only four-block decoder-depth ablation; its release provides five-fold evidence and does not replace the Attempt 01 External model.
+The Attempt 01 release also provides the five-fold CV evidence and the submitted External prediction ZIP as separate assets. Attempt 02 is a development-only four-block decoder-depth ablation; its release provides five-fold evidence and does not replace the Attempt 01 External model. Attempt 03 is a development-only heavier-decoder experiment (Soma's `heavy_conv`: pyramid pooling and two learned upsampling blocks) and does not replace it either. What each experiment tested and concluded is in the [research journal](docs/research-journal.md).
 
 ## Install
 
@@ -88,6 +89,8 @@ python -m beetle train --attempt configs/attempts/attempt-01.yaml
 `train` and `infer` write a record of the attempt to `provenance/attempts/<name>/`. A recording failure does not stop a run.
 
 For each submitted attempt: tag the commit (`attempt-NN`), attach the five decoder checkpoints and the resolved config to a GitHub release, and add a row to the attempts table.
+
+For every concluded experiment, submitted or not, add its result and verdict to the [research journal](docs/research-journal.md). `python -m beetle.comparison` builds the paired fold and patient-bootstrap comparison against earlier attempts, and `python -m beetle.release` packages the weights and evidence archives.
 
 ## Scope and licensing
 

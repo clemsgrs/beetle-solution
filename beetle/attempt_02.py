@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
-import csv
 import datetime
 import hashlib
 from importlib.metadata import distribution
@@ -16,72 +15,21 @@ import subprocess
 import sys
 from time import perf_counter
 from typing import Callable, Sequence
-import zipfile
-
-import numpy as np
 
 from beetle.attempts import REPO_ROOT, load_attempt_config
+from beetle.comparison import (
+    SPACING_EXCEPTION_PATIENT_IDS,
+    compare_attempts,
+    load_confusion_evidence,
+    load_cv_results,
+    read_sample_patients,
+)
+from beetle.release import assemble_release, validate_completed_run
 
 ATTEMPT_01_CONFIG = REPO_ROOT / "configs/attempts/attempt-01.yaml"
 ATTEMPT_02_CONFIG = REPO_ROOT / "configs/attempts/attempt-02.yaml"
 DEFAULT_CACHE_LOCK = REPO_ROOT / "configs/attempts/attempt-02-cache-lock.json"
 BATCH_CANDIDATES = ((64, 1), (32, 2), (16, 4), (8, 8))
-FOLD_ARTIFACTS = (
-    "best_model.pt",
-    "training_history.json",
-    "roi_batch_sampling.json",
-    "confusion_evidence_tune.json",
-    "metrics.json",
-    "segmentation_roi_population.json",
-)
-SPACING_EXCEPTION_PATIENT_IDS = (
-    "TCGA-OL-A66I",
-    "TCGA-OL-A66P",
-    "TCGA-OL-A6VO",
-)
-
-
-def _rounded(value: float) -> float:
-    return round(float(value), 12)
-
-
-def _confusion_metrics(matrix: np.ndarray, vocabulary: Sequence[str]) -> dict:
-    true_positive = np.diag(matrix).astype(np.float64)
-    denominators = matrix.sum(axis=0) + matrix.sum(axis=1)
-    dice = np.divide(
-        2.0 * true_positive,
-        denominators,
-        out=np.zeros_like(true_positive),
-        where=denominators != 0,
-    )
-    total = int(matrix.sum())
-    return {
-        "dice_per_class": {
-            name: _rounded(dice[index]) for index, name in enumerate(vocabulary)
-        },
-        "macro_dice": _rounded(dice.mean()),
-        "pixel_micro_dice": _rounded(true_positive.sum() / total),
-    }
-
-
-def _bootstrap_macro_dice(
-    matrices: Sequence[np.ndarray], *, draws: int
-) -> dict:
-    stacked = np.stack(matrices)
-    rng = np.random.default_rng(0)
-    replicates = []
-    for _ in range(draws):
-        indices = rng.integers(0, len(stacked), size=len(stacked))
-        pooled = stacked[indices].sum(axis=0)
-        replicates.append(_confusion_metrics(pooled, range(pooled.shape[0]))["macro_dice"])
-    low, high = np.percentile(replicates, [2.5, 97.5])
-    return {
-        "seed": 0,
-        "draws": draws,
-        "macro_dice_percentile_95_ci": [_rounded(low), _rounded(high)],
-    }
-
-
 def _strict_cache_context(config_path: Path, work_dir: Path):
     from soma.config import load_config
     from soma.pipeline import Pipeline
@@ -234,115 +182,26 @@ def build_decoder_depth_report(
     bootstrap_draws: int = 10_000,
 ) -> dict:
     """Build the paired Attempt 02 endpoint from held-out confusion evidence."""
-    baseline = json.loads(Path(attempt_01_report).read_text(encoding="utf-8"))
-    with Path(sample_patient_csv).open(newline="", encoding="utf-8") as handle:
-        rows = list(csv.DictReader(handle))
-    sample_to_patient = {
-        str(row["sample_id"]): str(row["patient_id"])
-        for row in rows
-        if row.get("sample_id") and row.get("patient_id")
-    }
-
-    candidate_records = []
-    for path in attempt_02_evidence:
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        candidate_records.extend(payload.get("records", []))
-    if not candidate_records:
-        raise ValueError("Attempt 02 confusion evidence is empty")
-    vocabulary = tuple(candidate_records[0]["class_vocabulary"])
-    candidate_by_patient: dict[str, list[np.ndarray]] = {}
-    candidate_folds: dict[str, int] = {}
-    fold_matrices: dict[int, list[np.ndarray]] = {fold: [] for fold in range(5)}
-    seen_samples: set[str] = set()
-    for record in candidate_records:
-        sample_id = str(record["sample_id"])
-        if sample_id in seen_samples:
-            raise ValueError(f"Attempt 02 sample appears more than once: {sample_id}")
-        seen_samples.add(sample_id)
-        if tuple(record["class_vocabulary"]) != vocabulary:
-            raise ValueError("Attempt 02 evidence disagrees on class vocabulary")
-        patient_id = sample_to_patient.get(sample_id)
-        if patient_id is None:
-            raise ValueError(f"Attempt 02 sample has no patient mapping: {sample_id}")
-        fold = int(record["fold"])
-        matrix = np.asarray(record["confusion_matrix"], dtype=np.int64)
-        existing_fold = candidate_folds.setdefault(patient_id, fold)
-        if existing_fold != fold:
-            raise ValueError(f"Attempt 02 patient appears in multiple folds: {patient_id}")
-        candidate_by_patient.setdefault(patient_id, []).append(matrix)
-        fold_matrices.setdefault(fold, []).append(matrix)
-    if set(fold_matrices) != set(range(5)) or any(not fold_matrices[x] for x in range(5)):
-        raise ValueError("Attempt 02 requires held-out confusion evidence for folds 0-4")
-
-    candidate_patients = {
-        patient_id: np.stack(matrices).sum(axis=0)
-        for patient_id, matrices in candidate_by_patient.items()
-    }
-    baseline_patients = {
-        str(record["patient_id"]): np.asarray(record["confusion_matrix"], dtype=np.int64)
-        for record in baseline.get("patients", [])
-    }
-    if set(candidate_patients) != set(baseline_patients):
-        raise ValueError("Attempt 01 and Attempt 02 patient cohorts differ")
-    if len(candidate_patients) != primary_patient_count:
-        raise ValueError(
-            f"Attempt 02 primary cohort has {len(candidate_patients)} patients; "
-            f"expected {primary_patient_count}"
-        )
-    excluded = sorted(str(value) for value in spacing_exception_patient_ids)
-    if not set(excluded).issubset(candidate_patients):
-        raise ValueError("Attempt 02 spacing-exception patients are absent")
-    sensitivity_ids = sorted(set(candidate_patients) - set(excluded))
-    if len(sensitivity_ids) != sensitivity_patient_count:
-        raise ValueError(
-            f"Attempt 02 sensitivity cohort has {len(sensitivity_ids)} patients; "
-            f"expected {sensitivity_patient_count}"
-        )
-
-    baseline_fold_scores = [
-        float(baseline["folds"][str(fold)]["mean_dice"]) for fold in range(5)
-    ]
-    candidate_fold_scores = [
-        _confusion_metrics(np.stack(fold_matrices[fold]).sum(axis=0), vocabulary)[
-            "macro_dice"
-        ]
-        for fold in range(5)
-    ]
-    baseline_all = [baseline_patients[x] for x in sorted(baseline_patients)]
-    candidate_all = [candidate_patients[x] for x in sorted(candidate_patients)]
-
-    def attempt_summary(depth: int, scores: Sequence[float]) -> dict:
-        return {
-            "decoder_upsample_blocks": depth,
-            "fold_scores": [_rounded(value) for value in scores],
-            "mean": _rounded(statistics.mean(scores)),
-            "sample_standard_deviation": _rounded(statistics.stdev(scores)),
-        }
-
-    def cohort_summary(patient_ids: Sequence[str]) -> dict:
-        baseline_matrices = [baseline_patients[x] for x in patient_ids]
-        candidate_matrices = [candidate_patients[x] for x in patient_ids]
-        return {
-            "patient_count": len(patient_ids),
-            "attempts": {
-                "attempt-01": _bootstrap_macro_dice(
-                    baseline_matrices, draws=bootstrap_draws
-                ),
-                "attempt-02": _bootstrap_macro_dice(
-                    candidate_matrices, draws=bootstrap_draws
-                ),
-            },
-        }
-
-    primary_ids = sorted(candidate_patients)
-    primary = cohort_summary(primary_ids)
-    sensitivity = cohort_summary(sensitivity_ids)
-    sensitivity.update(
-        {
-            "evaluation_only": True,
-            "excluded_patient_ids": excluded,
-        }
+    _, baseline_patients, baseline_fold_scores = load_cv_results(attempt_01_report)
+    vocabulary, candidate_patients, candidate_fold_scores = load_confusion_evidence(
+        attempt_02_evidence,
+        read_sample_patients(sample_patient_csv),
+        label="Attempt 02",
     )
+    report = compare_attempts(
+        {
+            "attempt-01": (baseline_fold_scores, baseline_patients),
+            "attempt-02": (candidate_fold_scores, candidate_patients),
+        },
+        vocabulary=vocabulary,
+        spacing_exception_patient_ids=spacing_exception_patient_ids,
+        primary_patient_count=primary_patient_count,
+        sensitivity_patient_count=sensitivity_patient_count,
+        bootstrap_draws=bootstrap_draws,
+    )
+    attempts = report["attempts"]
+    attempts["attempt-01"]["decoder_upsample_blocks"] = 2
+    attempts["attempt-02"]["decoder_upsample_blocks"] = 4
     mean_delta = statistics.mean(candidate_fold_scores) - statistics.mean(
         baseline_fold_scores
     )
@@ -354,25 +213,17 @@ def build_decoder_depth_report(
             f"Attempt 02's five-fold mean was {abs(mean_delta):.6f} {direction} "
             "than Attempt 01."
         )
+    # Published schema: the Attempt 02 release report hash depends on this shape.
     return {
         "schema_version": 1,
-        "attempts": {
-            "attempt-01": attempt_summary(2, baseline_fold_scores),
-            "attempt-02": attempt_summary(4, candidate_fold_scores),
-        },
-        "paired_fold_deltas": [
-            _rounded(candidate - baseline)
-            for candidate, baseline in zip(
-                candidate_fold_scores, baseline_fold_scores, strict=True
-            )
+        "attempts": attempts,
+        "paired_fold_deltas": report["comparisons"]["attempt-02_minus_attempt-01"][
+            "paired_fold_deltas"
         ],
-        "pooled_metrics": {
-            "attempt-01": _confusion_metrics(np.stack(baseline_all).sum(axis=0), vocabulary),
-            "attempt-02": _confusion_metrics(np.stack(candidate_all).sum(axis=0), vocabulary),
-        },
+        "pooled_metrics": report["pooled_metrics"],
         "patient_bootstrap": {
-            "primary_527_patient": primary,
-            "derived_524_patient": sensitivity,
+            "primary_527_patient": report["patient_bootstrap"]["primary"],
+            "derived_524_patient": report["patient_bootstrap"]["sensitivity"],
         },
         "formal_comparator": "attempt-01",
         "historical_motivation": {
@@ -395,42 +246,6 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _artifact_identity(path: Path) -> dict:
-    return {"bytes": path.stat().st_size, "sha256": _sha256(path)}
-
-
-def validate_completed_run(
-    *, run_dir: str | Path, environment_path: str | Path
-) -> dict:
-    """Gate publication on five real folds and identify every retained artifact."""
-    run_dir = Path(run_dir)
-    environment_path = Path(environment_path)
-    resolved_config = run_dir / "config.yaml"
-    if not resolved_config.is_file():
-        raise ValueError("Attempt 02 completed-run gate is missing resolved config.yaml")
-    if not environment_path.is_file():
-        raise ValueError("Attempt 02 completed-run gate is missing environment provenance")
-    folds = {}
-    for fold in range(5):
-        fold_dir = run_dir / f"fold_{fold}"
-        identities = {}
-        for name in FOLD_ARTIFACTS:
-            path = fold_dir / name
-            if not path.is_file():
-                raise ValueError(
-                    f"Attempt 02 completed-run gate: fold {fold} is missing {name}"
-                )
-            identities[name] = _artifact_identity(path)
-        folds[str(fold)] = identities
-    return {
-        "schema_version": 1,
-        "status": "completed",
-        "resolved_config": _artifact_identity(resolved_config),
-        "environment_provenance": _artifact_identity(environment_path),
-        "folds": folds,
-    }
-
-
 def assemble_release_archives(
     *,
     run_dir: str | Path,
@@ -441,82 +256,21 @@ def assemble_release_archives(
     output_dir: str | Path,
 ) -> dict:
     """Package five weights and compact publication evidence after all-fold gating."""
-    run_dir = Path(run_dir)
-    preflight_path = Path(preflight_path)
-    strict_validation_path = Path(strict_validation_path)
-    report_path = Path(report_path)
-    environment_path = Path(environment_path)
-    output_dir = Path(output_dir)
-    resolved_dir = preflight_path.parent / "resolved"
-    inputs = (
-        preflight_path,
-        strict_validation_path,
-        report_path,
-        environment_path,
-        resolved_dir / "attempt-01.yaml",
-        resolved_dir / "attempt-02.yaml",
-    )
-    missing = [str(path) for path in inputs if not path.is_file()]
-    if missing:
-        raise ValueError(f"Attempt 02 release evidence is missing: {missing}")
-    manifest = validate_completed_run(
-        run_dir=run_dir, environment_path=environment_path
-    )
-    output_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = output_dir / "artifact_checksums.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-
-    weights_path = output_dir / "beetle-attempt-02-weights.zip"
-    with zipfile.ZipFile(weights_path, "w", compression=zipfile.ZIP_STORED) as archive:
-        archive.write(run_dir / "config.yaml", "config.yaml")
-        for fold in range(5):
-            archive.write(
-                run_dir / f"fold_{fold}/best_model.pt",
-                f"fold_{fold}/best_model.pt",
-            )
-        archive.write(manifest_path, "artifact_checksums.json")
-
-    evidence_path = output_dir / "beetle-attempt-02-evidence.zip"
-    with zipfile.ZipFile(
-        evidence_path, "w", compression=zipfile.ZIP_DEFLATED
-    ) as archive:
-        archive.write(preflight_path, "preflight.json")
-        archive.write(strict_validation_path, "strict-cache-validation.json")
-        archive.write(report_path, "decoder_depth_report.json")
-        archive.write(environment_path, "environment.json")
-        archive.write(
-            resolved_dir / "attempt-01.yaml", "resolved/attempt-01.yaml"
-        )
-        archive.write(
-            resolved_dir / "attempt-02.yaml", "resolved/attempt-02.yaml"
-        )
-        for fold in range(5):
-            for name in (
-                "training_history.json",
-                "confusion_evidence_tune.json",
-                "metrics.json",
-                "segmentation_roi_population.json",
-            ):
-                archive.write(run_dir / f"fold_{fold}/{name}", f"fold_{fold}/{name}")
-        archive.write(manifest_path, "artifact_checksums.json")
-    return {
-        "schema_version": 1,
-        "status": "completed",
-        "artifact_manifest": {
-            "path": str(manifest_path),
-            **_artifact_identity(manifest_path),
+    resolved_dir = Path(preflight_path).parent / "resolved"
+    return assemble_release(
+        attempt_id="attempt-02",
+        run_dir=run_dir,
+        environment_path=environment_path,
+        evidence={
+            "preflight.json": preflight_path,
+            "strict-cache-validation.json": strict_validation_path,
+            "decoder_depth_report.json": report_path,
+            "environment.json": environment_path,
+            "resolved/attempt-01.yaml": resolved_dir / "attempt-01.yaml",
+            "resolved/attempt-02.yaml": resolved_dir / "attempt-02.yaml",
         },
-        "weights_archive": {
-            "path": str(weights_path),
-            **_artifact_identity(weights_path),
-        },
-        "evidence_archive": {
-            "path": str(evidence_path),
-            **_artifact_identity(evidence_path),
-        },
-    }
+        output_dir=output_dir,
+    )
 
 
 def capture_environment_provenance(

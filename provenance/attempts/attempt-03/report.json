@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-03",
+  "fold_scores": [0.872388291041, 0.908608689219, 0.903884707787, 0.914849687984, 0.847364453676],
+  "mean": 0.889419165941,
+  "sample_standard_deviation": 0.02864808318,
+  "formal_comparator": "attempt-01",
+  "mean_delta": 0.003293643717,
+  "secondary_comparator": "attempt-02",
+  "secondary_mean_delta": 0.001399930604,
+  "external_model_superseded": false,
+  "release_report_sha256": "5bbc96ccef431d19cd913a2ce5f45e7d2b8b39d34411378a8f3c393b6ba9dc98"
+}
