@@ -4,6 +4,10 @@ Each attempt contributes five fold scores and one confusion matrix per patient.
 The first attempt given is the formal comparator. Every later attempt is paired
 with every earlier one on identical patients, so a bootstrap difference
 resamples the same patients for both sides.
+
+``split`` picks which held-out evidence a run directory contributes: ``tune``
+scores come from the fold that selected each checkpoint; ``test`` scores come
+from ``python -m beetle score-test`` on the fold no model saw.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ from typing import Mapping, Sequence
 import numpy as np
 
 FOLD_IDS = tuple(range(5))
-EVIDENCE_NAME = "confusion_evidence_tune.json"
+SPLITS = ("tune", "test")
 SPACING_EXCEPTION_PATIENT_IDS = (
     "TCGA-OL-A66I",
     "TCGA-OL-A66P",
@@ -156,6 +160,23 @@ def load_confusion_evidence(
     return vocabulary, patients, fold_scores
 
 
+def read_patient_groups(dataset_csv: str | Path, column: str) -> dict[str, str]:
+    """Map each patient to its one ``column`` value, e.g. data source."""
+    with Path(dataset_csv).open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    if not rows or column not in rows[0]:
+        raise ValueError(f"{dataset_csv} has no {column!r} column")
+    groups: dict[str, str] = {}
+    for row in rows:
+        patient_id, value = str(row["patient_id"]), str(row[column])
+        if groups.setdefault(patient_id, value) != value:
+            raise ValueError(
+                f"Patient {patient_id} spans several {column} values; "
+                "patient-level grouping is undefined"
+            )
+    return groups
+
+
 def load_cv_results(
     path: str | Path,
 ) -> tuple[tuple[str, ...] | None, dict[str, np.ndarray], list[float]]:
@@ -183,8 +204,13 @@ def compare_attempts(
     primary_patient_count: int = 527,
     sensitivity_patient_count: int = 524,
     bootstrap_draws: int = 10_000,
+    patient_groups: Mapping[str, str] | None = None,
 ) -> dict:
-    """Summarize each attempt and pair every later attempt with every earlier one."""
+    """Summarize each attempt and pair every later attempt with every earlier one.
+
+    With ``patient_groups``, also pool each attempt's matrices within every group.
+    These are descriptive: groups such as data source confound case mix.
+    """
     names = list(attempts)
     if len(names) < 2:
         raise ValueError("A comparison requires at least two attempts")
@@ -249,7 +275,7 @@ def compare_attempts(
                 },
             }
 
-    return {
+    report = {
         "schema_version": 1,
         "formal_comparator": formal,
         "candidate": names[-1],
@@ -271,16 +297,39 @@ def compare_attempts(
             "sensitivity": sensitivity,
         },
     }
+    if patient_groups is not None:
+        ungrouped = [patient_id for patient_id in primary_ids if patient_id not in patient_groups]
+        if ungrouped:
+            raise ValueError(f"{len(ungrouped)} patients have no group, e.g. {ungrouped[0]}")
+        members: dict[str, list[str]] = {}
+        for patient_id in primary_ids:
+            members.setdefault(patient_groups[patient_id], []).append(patient_id)
+        report["per_group"] = {
+            group: {
+                "patient_count": len(patient_ids),
+                "attempts": {
+                    name: confusion_metrics(
+                        np.stack(matrices(name, patient_ids)).sum(axis=0), vocabulary
+                    )
+                    for name in names
+                },
+            }
+            for group, patient_ids in sorted(members.items())
+        }
+    return report
 
 
 def build_report(
     *,
     attempt_sources: Sequence[tuple[str, Path]],
     sample_patient_csv: str | Path,
+    split: str = "tune",
     bootstrap_draws: int = 10_000,
     **cohorts,
 ) -> dict:
     """Load each attempt from a released CV record (a file) or a run directory."""
+    if split not in SPLITS:
+        raise ValueError(f"split must be one of {SPLITS}: {split!r}")
     sample_to_patient = read_sample_patients(sample_patient_csv)
     attempts: dict[str, tuple[list[float], dict[str, np.ndarray]]] = {}
     vocabularies = set()
@@ -290,12 +339,17 @@ def build_report(
         path = Path(path)
         if path.is_dir():
             vocabulary, patients, scores = load_confusion_evidence(
-                [path / f"fold_{fold}" / EVIDENCE_NAME for fold in FOLD_IDS],
+                [path / f"fold_{fold}" / f"confusion_evidence_{split}.json" for fold in FOLD_IDS],
                 sample_to_patient,
                 label=name,
             )
-        else:
+        elif split == "tune":
             vocabulary, patients, scores = load_cv_results(path)
+        else:
+            raise ValueError(
+                f"{name}: a released cv_results record holds tune-fold scores; "
+                f"split={split!r} needs a run directory of scored evidence"
+            )
         if vocabulary is not None:
             vocabularies.add(vocabulary)
         attempts[name] = (scores, patients)
@@ -330,14 +384,35 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--sample-patient-csv", type=Path, required=True)
+    parser.add_argument(
+        "--split",
+        choices=SPLITS,
+        default="tune",
+        help="Held-out evidence to compare: the checkpoint-selection fold or the unseen test fold",
+    )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--bootstrap-draws", type=int, default=10_000)
+    parser.add_argument(
+        "--group-csv",
+        type=Path,
+        help="Slide manifest with patient_id and --group-column, for descriptive per-group pooling",
+    )
+    parser.add_argument("--group-column", help="e.g. source")
     args = parser.parse_args(argv)
+    if (args.group_csv is None) != (args.group_column is None):
+        parser.error("--group-csv and --group-column go together")
+    groups = (
+        None if args.group_csv is None else read_patient_groups(args.group_csv, args.group_column)
+    )
     result = build_report(
         attempt_sources=args.attempts,
         sample_patient_csv=args.sample_patient_csv,
+        split=args.split,
         bootstrap_draws=args.bootstrap_draws,
+        patient_groups=groups,
     )
+    if groups is not None:
+        result["group_column"] = args.group_column
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0
