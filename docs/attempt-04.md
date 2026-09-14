@@ -36,8 +36,12 @@ multiple devices are refused. The supervisor separately checks for new GPU
 processes and query/guard failures. It terminates our process group on detection
 and escalates after five seconds if needed.
 
-The resume loop relaunches only after a yield to another GPU process, and only
-once the GPU has shown no process for 10 unbroken minutes. It does not relaunch
+The resume loop is given every GPU UUID on the machine and pins each launch to one
+of them through `CUDA_VISIBLE_DEVICES`. It first launches on a GPU with no process.
+It relaunches only after a yield to another GPU process, and only on a GPU that has
+shown no process for 10 unbroken minutes, preferring the one idle longest. It polls
+all GPUs while a launch runs, so a GPU that stayed free throughout is used as soon as
+our job yields; otherwise the loop waits until some GPU qualifies. It does not relaunch
 after any other stop, or after six consecutive yields within 20 minutes of launch;
 those wait for a person. Its state is in `jobs/autoresume-status.json` and
 `jobs/autoresume.log`. Touch `jobs/autoresume.stop` to prevent further

@@ -21,9 +21,9 @@ def gpu_uuid() -> str:
     return uuid
 
 
-def gpu_pids() -> set[str]:
+def gpu_pids(uuid: str | None = None) -> set[str]:
     result = subprocess.run(
-        ['nvidia-smi', '--id', gpu_uuid(), '--query-compute-apps=pid', '--format=csv,noheader'],
+        ['nvidia-smi', '--id', uuid or gpu_uuid(), '--query-compute-apps=pid', '--format=csv,noheader'],
         capture_output=True, text=True, check=True, timeout=5,
     )
     lines = {line.strip() for line in result.stdout.splitlines() if line.strip()}
