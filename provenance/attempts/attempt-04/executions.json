@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "attempt_id": "attempt-04",
+  "run_root": "/maindisk/clement/beetle-attempt-04-20260912",
+  "run_id": "attempt-04-mascaret-20260912",
+  "source_base_commit": "cfa6bebfdda6ada8ed64ec5803b306c4772bc5fa",
+  "source_snapshot": "/maindisk/clement/beetle-attempt-04-20260912/checkout",
+  "preparation_evidence": "/maindisk/clement/beetle-attempt-04-20260912/evidence/preparation.json",
+  "smoke_evidence": "/maindisk/clement/beetle-attempt-04-20260912/evidence/smoke.json",
+  "worker_status": "/maindisk/clement/beetle-attempt-04-20260912/status.json",
+  "guard_status": "/maindisk/clement/beetle-attempt-04-20260912/jobs/run-04/guard-status.json",
+  "encoder": {
+    "repository": "wearewaiv/mascaret",
+    "revision": "e95e7ea15e039e78d74def101415e19d9a67ba80",
+    "weight_sha256": "901074de8466a4349f8a2e5d007e446855a627515f17543158eb22006135ac8a",
+    "compute_precision": "fp32",
+    "cache_dtype": "fp16"
+  },
+  "gpu_guard": {
+    "poll_seconds": 1,
+    "automatic_restart": false,
+    "scope": "entire worker process group; one CUDA client across all phases",
+    "gpu_uuid": "GPU-f754e036-d2af-52d6-ef24-da2fd9051b96"
+  },
+  "notes": [
+    "Run 01 failed during smoke input handling of a blank native-spacing field; corrected to permit metadata inference.",
+    "Run 02 failed during slide2vec authentication with offline mode enabled; removed offline mode.",
+    "Neither startup failure was a yield to another GPU process. Run 03 passed the numerical smoke test and entered extraction.",
+    "Consult live status files for current progress; this record does not assert training completion.",
+    "Run 04 relaunched on September 13 on the idle H200 GPU-f754e036-d2af-52d6-ef24-da2fd9051b96. Both monitors now scope queries to that UUID; independent guard is run-local, fail-closed, and uses the validated worker PID baseline. Nine guard tests passed. Existing complete Mascaret cache and run ID retained; no automatic restart."
+  ]
+}
