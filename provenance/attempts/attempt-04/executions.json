@@ -8,7 +8,8 @@
   "preparation_evidence": "/maindisk/clement/beetle-attempt-04-20260912/evidence/preparation.json",
   "smoke_evidence": "/maindisk/clement/beetle-attempt-04-20260912/evidence/smoke.json",
   "worker_status": "/maindisk/clement/beetle-attempt-04-20260912/status.json",
-  "guard_status": "/maindisk/clement/beetle-attempt-04-20260912/jobs/run-04/guard-status.json",
+  "guard_status": "/maindisk/clement/beetle-attempt-04-20260912/jobs/run-05/guard-status.json",
+  "resume_status": "/maindisk/clement/beetle-attempt-04-20260912/jobs/autoresume-status.json",
   "encoder": {
     "repository": "wearewaiv/mascaret",
     "revision": "e95e7ea15e039e78d74def101415e19d9a67ba80",
@@ -20,13 +21,24 @@
     "poll_seconds": 1,
     "automatic_restart": false,
     "scope": "entire worker process group; one CUDA client across all phases",
-    "gpu_uuid": "GPU-f754e036-d2af-52d6-ef24-da2fd9051b96"
+    "gpu_uuid": "GPU-6afe82b0-5e10-1270-3bc2-e15aa826408d"
+  },
+  "resume_loop": {
+    "module": "beetle/gpu_resume.py",
+    "relaunch_after": "a yield to another GPU process only; any other stop waits for a person",
+    "idle_minutes_before_relaunch": 10,
+    "max_consecutive_quick_yields": 6,
+    "quick_yield_minutes": 20,
+    "stop_file": "/maindisk/clement/beetle-attempt-04-20260912/jobs/autoresume.stop"
   },
   "notes": [
     "Run 01 failed during smoke input handling of a blank native-spacing field; corrected to permit metadata inference.",
     "Run 02 failed during slide2vec authentication with offline mode enabled; removed offline mode.",
     "Neither startup failure was a yield to another GPU process. Run 03 passed the numerical smoke test and entered extraction.",
     "Consult live status files for current progress; this record does not assert training completion.",
-    "Run 04 relaunched on September 13 on the idle H200 GPU-f754e036-d2af-52d6-ef24-da2fd9051b96. Both monitors now scope queries to that UUID; independent guard is run-local, fail-closed, and uses the validated worker PID baseline. Nine guard tests passed. Existing complete Mascaret cache and run ID retained; no automatic restart."
+    "Run 04 relaunched on September 13 on the idle H200 GPU-f754e036-d2af-52d6-ef24-da2fd9051b96. Both monitors now scope queries to that UUID; independent guard is run-local, fail-closed, and uses the validated worker PID baseline. Nine guard tests passed. Existing complete Mascaret cache and run ID retained; no automatic restart.",
+    "Run 04 completed fold 0 (tune dataset-global mean Dice 0.8627, selected at epoch 9). The guard stopped it during fold 1 on 2026-09-13 at 08:12 UTC, when GPU process 631867 appeared.",
+    "Correction to the run 04 note: the run ID was not retained. Soma's save_config omits run_id, so run() launched unpinned timestamped runs (2026-09-12_18-27-16__local for run 03, 2026-09-13_02-05-54__local for run 04). On 2026-09-14 run() was changed to pin run_id, and the run 04 directory holding fold 0 was renamed to attempt-04-mascaret-20260912.",
+    "Run 05 launched on 2026-09-14 at 09:30 UTC on idle H200 GPU-6afe82b0-5e10-1270-3bc2-e15aa826408d under the resume loop. Fold 0 was skipped as complete, and fold 1 restarted from epoch 0. Nineteen guard and resume tests passed."
   ]
 }
