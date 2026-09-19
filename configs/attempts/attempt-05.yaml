@@ -1,0 +1,26 @@
+# Attempt 05: frozen GenBio-PathFM with Attempt 01's lightweight decoder and protocol.
+run:
+  output_root: /maindisk/clement/beetle-attempt-05-20260919/runs
+  tags: [beetle, genbio-pathfm, attempt-05]
+
+data:
+  dataset_csv: /maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/dataset.csv
+  splits_csv: /maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/splits.csv
+
+# Both settings reach extraction; cache storage remains FP16.
+execution:
+  precision: fp32
+  num_gpus: 4
+  num_workers_per_gpu: 4
+
+encoder:
+  name: genbio-pathfm
+  precision: fp32
+  output_variant: default
+
+cache:
+  root_dir: /maindisk/clement/beetle-attempt-05-20260919/cache/genbio-pathfm_6eab2a4ea6fbaee16e5f193187952042ebe5d3ec_dense_fp16
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null
