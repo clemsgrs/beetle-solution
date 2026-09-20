@@ -12,6 +12,7 @@ Changed 2026-09-11: verdicts were first decided on tune-fold scores, which check
 
 - **Decoder capacity is closed.** On untouched test folds both heavier decoders score below Attempt 01's lightweight decoder, and checkpoint selection inflated their tune scores more: tune-to-test drops of −0.010, −0.018, and −0.025 for Attempts 01–03. New experiments keep Attempt 01's decoder as their baseline; retest capacity only with a finer-grained encoder.
 - **Tune-fold scores mislead; test-fold scores resolve small differences.** Selection reversed the ranking of Attempts 01–03, and on test folds a −0.006 paired difference already has a bootstrap interval that excludes zero.
+- **A different frozen encoder is not enough.** Mascaret, at Virchow2's stride and spacing and with Attempt 01's decoder held fixed, scores within noise of it (−0.0023, 2/5 folds, interval spanning zero). The open encoder question is now finer stride or adaptation, not which frozen encoder.
 - **The biggest measured weakness is external non-invasive epithelium**: 0.893 on development test folds versus 0.748 on the leaderboard (finding 3).
 
 ## Experiments
@@ -24,10 +25,12 @@ Test and tune Dice are the equal-weight mean ± sample SD of five fold dataset-g
 | Class-conditioned sampler | sampling | Equal class request ratios | not scored | 0.8822 ± 0.0260 | tune only: −0.0039, 1/5 | not recorded | No detectable effect on tune (worse) |
 | Attempt 02 | decoder capacity | 4 bilinear blocks (2.69M params), 592×592 logits | 0.8705 ± 0.0398 | 0.8880 ± 0.0287 | −0.0053, 0/5 | −0.0063 [−0.0125, −0.0001] | No detectable effect (worse) |
 | Attempt 03 | decoder capacity | `heavy_conv`: pyramid pooling, 2 learned transposed-conv blocks (5.25M params) | 0.8642 ± 0.0520 | 0.8894 ± 0.0286 | −0.0116, 1/5 | −0.0123 [−0.0206, −0.0051] | No detectable effect (worse); vs A02 −0.0063, 2/5 |
+| Attempt 04 | encoder | Frozen Mascaret (`wearewaiv/mascaret` @ `e95e7ea`), 1,536-dim dense grid, Attempt 01 decoder unchanged | 0.8736 ± 0.0338 | 0.8859 ± 0.0176 | −0.0023, 2/5 | −0.0027 [−0.0143, +0.0097] | No detectable effect |
 
 - **Class-conditioned sampler** (development arm before Attempt 01, not re-scored on test folds): raised necrosis to 19.9% of annotated pixels in drawn ROIs (3.0% under uniform draws). Evidence: `git show c68e6c1^:provenance/attempts/uniform/arm_selection.json`; exposure audits under `/maindisk/clement/soma-beetle-campaign-20260827/data/beetle/handoff/sampler_audits/`.
 - **Attempt 02**: [#2](https://github.com/clemsgrs/beetle-solution/issues/2), `provenance/attempts/attempt-02/`.
 - **Attempt 03**: [#5](https://github.com/clemsgrs/beetle-solution/issues/5), `provenance/attempts/attempt-03/`. Its tune-fold signal (+0.0033 vs Attempt 01 on 4/5 folds) did not survive test folds. The transposed blocks left a sub-visible boundary bias: predicted label transitions favour one phase of a 7-px period, with a max/min share ratio of 1.28 against 1.03 for Attempt 02's bilinear decoder, and no visible checkerboard. Prefer resize-convolution if learned upsampling returns.
+- **Attempt 04**: [#9](https://github.com/clemsgrs/beetle-solution/issues/9), [#10](https://github.com/clemsgrs/beetle-solution/pull/10), `provenance/attempts/attempt-04/` (row numbers from its `comparison.json`; the test-folds report covers Attempts 01–03 only). First test of the encoder direction: swapping frozen Virchow2 for frozen Mascaret at the same 0.5 µm spacing and 37×37 grid, with everything else held fixed, moves nothing. Paired test-fold delta −0.0023 on 2/5 folds, and the bootstrap interval spans zero. Pooled class Dice shifts are small and offsetting: necrosis 0.783 → 0.792, invasive epithelium 0.856 → 0.841, non-invasive 0.893 → 0.891, other 0.976 → 0.974. The tune-to-test drop is 0.0124, inside the 0.010–0.025 band of Attempts 01–03 (finding 1), and selected epochs range from 5 to 14 with tune loss ending above its minimum in all five folds (finding 7). Per source, the two smallest contributors move most and in opposite directions (TCGA 0.775 → 0.802, JB 0.783 → 0.740); per-source scores are descriptive (finding 4).
 
 ## Findings
 
@@ -45,7 +48,7 @@ These bound every comparison above.
 
 Unranked. New experiments keep Attempt 01's decoder as their baseline and are judged on test folds. Finding 2 still cuts across all of them: until the leaderboard formula is confirmed, development gains may not carry over one-to-one. Final submission members could train on 4/5 of patients; how they select a checkpoint is decided at the first submission run.
 
-- **Encoder.** Known: all attempts decode the same frozen Virchow2 final-layer grid (14-px tokens at 0.5 µm/px, 224-px windows). Test: change the representation with Attempt 01's decoder held fixed, by adapting Virchow2 or using a finer-stride encoder. Both need live encoding or a new cache.
+- **Encoder.** Known: Attempts 01–03 decode the same frozen Virchow2 final-layer grid (14-px tokens at 0.5 µm/px, 224-px windows), and Attempt 04 showed that substituting another frozen encoder at that same stride and spacing changes nothing. Untested: finer stride, and adapting the encoder rather than replacing it. Both need live encoding or a new cache.
 - **Augmentation.** Known: none is used (finding 6), and the largest external loss is non-invasive epithelium at unseen centres (finding 3). Test: stain and geometric augmentation applied before the encoder, via an augmented feature cache or live encoding.
 - **Sampling.** Known: RUMC dominates exposure (finding 4), equal class balancing lost Dice on tune folds, and mixed-class ROIs are hardest (finding 5). Test: a sampler that tempers source exposure or mixes in interface ROIs while most draws stay uniform, logging realized exposure.
 - **Loss.** Known: unweighted cross-entropy plus soft Dice; necrosis is the weakest development class (0.78 on test folds). Test: one mild change at a time, once the leaderboard aggregation is known.

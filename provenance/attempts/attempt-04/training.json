@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-09-19T15:39:48+00:00",
+  "run_dir": "/maindisk/clement/beetle-attempt-04-20260912/runs/experiments/dataset-mascaret-slide-segmentation_989d21be0cc9/runs/attempt-04-mascaret-20260912",
+  "soma": {
+    "commit": "4a3d6c84f9a3dc2832e585c6884a95d14a0f79bc",
+    "version": "1.11.2"
+  }
+}
