@@ -42,16 +42,27 @@ The run directory is `/maindisk/clement/beetle-attempt-05-20260919` (on the 27 T
    coverage, feature dimension and grid, and writes `evidence/cache.json`. Extraction
    resumes per slide, so relaunch the same command after a failure. Logs are in
    `jobs/extract-NN/run.log`.
-4. `run --job-dir`: Attempt 04's guarded worker (smoke, cache validation, five-fold
-   training, test-fold scoring, comparison against Attempt 01). **Not yet executed.** How
-   training runs, sequentially or with folds in parallel, is still to be decided; settle
-   `execution.num_gpus` for training at the same time.
+4. `train --fold K`: trains one fold on the GPU selected by `CUDA_VISIBLE_DEVICES`. Every
+   launch pins Soma run `attempt-05-genbio-pathfm-20260919` and passes `run.folds: [K]`, so
+   launches given different folds can run side by side, one per GPU. A fold with
+   `metrics.json` is skipped; an interrupted fold restarts from epoch 0. Two launches given
+   the same fold would both train it. Logs are in `jobs/train-foldK-NN/run.log`.
+5. `finish`: run once all five folds have `metrics.json`. It validates the cache, lets
+   Soma write the run summary (training any fold still pending), records the attempt,
+   checks the training ROI files against the baseline replay, scores the test folds, and
+   compares against Attempt 01 with Attempt 04 alongside (`provenance/comparison.json`).
+
+`run.folds` comes from Soma issue clemsgrs/soma#478. Attempts 01–04 ran on Soma 1.11.2 at
+`4a3d6c8`; the run venv now holds the backport of that one change to the same commit
+(`eb5470b`, branch `backport/run-folds-1.11.2`). Folds seed independently, so splitting
+them across launches does not change any fold's result. `evidence/preparation.json` still
+names `4a3d6c8`: it was written before the backport was installed.
 
 ## GPU guard waiver
 
-`smoke` and `extract` run without `gpu_guard.py`. The user waived CLAUDE.md's shared-GPU
-rule for Attempt 05 extraction on 2026-09-19 because the node was reserved for them for a
-few days. The waiver does not cover training or any later job.
+No phase runs under `gpu_guard.py`. The user waived CLAUDE.md's shared-GPU rule for
+Attempt 05 because the node was reserved for them for a few days: extraction on
+2026-09-19, training on 2026-09-20. The waiver does not cover any later attempt.
 
 ## Verdict
 

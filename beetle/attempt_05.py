@@ -14,7 +14,7 @@ from pathlib import Path
 import time
 
 from beetle.attempts import REPO_ROOT, load_attempt_config
-from beetle.gpu_job import claim_gpu, write_json
+from beetle.gpu_job import write_json
 
 BASE = Path('/maindisk/clement/beetle-attempt-05-20260919')
 REVISION = '6eab2a4ea6fbaee16e5f193187952042ebe5d3ec'
@@ -205,27 +205,30 @@ def extract(base: Path, config) -> dict:
     return cache
 
 
-def run(base: Path, job_dir: Path) -> None:
-    import torch
+def train(base: Path, fold: int) -> None:
+    """Train one fold on the visible GPU; launches given different folds share RUN_ID."""
+    from soma.pipeline import Pipeline
+
+    _, config = load_prepared(base)
+    check_revision(base)
+    result = Pipeline(replace(config, folds=(fold,))).run()
+    print(f'Fold {fold} trained in {result.run_dir}; still pending: {list(result.pending_folds)}',
+          flush=True)
+
+
+def finish(base: Path) -> None:
+    """Summarize the run (training any fold still pending), then score and compare it."""
     from soma.pipeline import Pipeline
     from beetle import record
     from beetle.score import score_attempts
     from beetle.comparison import main as compare
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     prep, config = load_prepared(base)
-    token = claim_gpu(job_dir)  # Keep this allocation alive across all phases.
     status = base / 'status.json'
     try:
-        write_json(status, {'status': 'running', 'phase': 'smoke', 'job_dir': str(job_dir)})
-        print(smoke(base, config), flush=True)
-        gc.collect()
-        torch.cuda.empty_cache()
-        write_json(status, {'status': 'running', 'phase': 'extraction', 'job_dir': str(job_dir)})
+        write_json(status, {'status': 'running', 'phase': 'cache_validation'})
         cache = extract(base, config)  # Validates the finished cache without re-encoding.
-        gc.collect()
-        torch.cuda.empty_cache()
-        write_json(status, {'status': 'running', 'phase': 'training', 'job_dir': str(job_dir)})
+        write_json(status, {'status': 'running', 'phase': 'training'})
         result = Pipeline(config).run()
         record.ATTEMPTS_DIR = base / 'provenance/attempts'
         record.record_training('attempt-05', result.run_dir, config)
@@ -233,11 +236,13 @@ def run(base: Path, job_dir: Path) -> None:
         for name, expected in prep['roi_hashes'].items():
             if sha256(rois / name) != expected:
                 raise ValueError(f'Training {name} differs from baseline replay')
-        write_json(status, {'status': 'running', 'phase': 'test_scoring', 'job_dir': str(job_dir)})
+        write_json(status, {'status': 'running', 'phase': 'test_scoring'})
         score_attempts(attempts=[('attempt-05', result.run_dir)], roi_manifest=rois / 'roi_manifest.csv',
                        roi_splits=rois / 'roi_splits.csv', feature_dir=cache['feature_dir'],
                        output_dir=base / 'scores', split='test', batch_size=64, num_workers=4)
+        # Attempt 01 is the comparator; Attempt 04 rides along as the other frozen-encoder swap.
         compare(['--attempt', 'attempt-01=/maindisk/clement/beetle-test-folds-20260911/scores/attempt-01',
+                 '--attempt', 'attempt-04=/maindisk/clement/beetle-attempt-04-20260912/scores/attempt-04',
                  '--attempt', f'attempt-05={base / "scores/attempt-05"}',
                  '--sample-patient-csv', str(rois / 'roi_manifest.csv'), '--split', 'test',
                  '--group-csv', str(config.dataset_csv), '--group-column', 'source',
@@ -245,29 +250,29 @@ def run(base: Path, job_dir: Path) -> None:
         write_json(status, {'status': 'completed', 'run_dir': str(result.run_dir),
                             'comparison': str(base / 'provenance/comparison.json')})
     except Exception as exc:
-        write_json(status, {'status': 'failed', 'error': repr(exc), 'job_dir': str(job_dir)})
+        write_json(status, {'status': 'failed', 'error': repr(exc)})
         raise
-    finally:
-        del token
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=('prepare', 'smoke', 'extract', 'run'))
+    parser.add_argument('action', choices=('prepare', 'smoke', 'extract', 'train', 'finish'))
     parser.add_argument('--base', type=Path, default=BASE)
-    parser.add_argument('--job-dir', type=Path)
+    parser.add_argument('--fold', type=int, choices=range(5))
     args = parser.parse_args()
+    # Every GPU phase runs unguarded: the node is reserved for us while Attempt 05 runs.
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
     if args.action == 'prepare':
         prepare(args.base)
-    elif args.action in ('smoke', 'extract'):
-        # Unguarded phases: the node is reserved for us while Attempt 05 extracts.
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+    elif args.action == 'train':
+        if args.fold is None:
+            parser.error('train requires --fold')
+        train(args.base, args.fold)
+    elif args.action == 'finish':
+        finish(args.base)
+    else:
         _, config = load_prepared(args.base)
         print(smoke(args.base, config) if args.action == 'smoke' else extract(args.base, config), flush=True)
-    elif args.job_dir is None:
-        parser.error('run requires --job-dir for the GPU guard handshake')
-    else:
-        run(args.base, args.job_dir)
 
 
 if __name__ == '__main__':
