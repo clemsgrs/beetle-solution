@@ -1,0 +1,26 @@
+# Attempt 04: frozen Mascaret with Attempt 01's lightweight decoder and protocol.
+run:
+  output_root: /maindisk/clement/beetle-attempt-04-20260912/runs
+  tags: [beetle, mascaret, attempt-04]
+
+data:
+  dataset_csv: /maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/dataset.csv
+  splits_csv: /maindisk/clement/soma-beetle-campaign-20260827/data/beetle/curated_slide_manifest/splits.csv
+
+# Both settings reach extraction; cache storage remains FP16.
+execution:
+  precision: fp32
+  num_gpus: 1
+  num_workers_per_gpu: 4
+
+encoder:
+  name: mascaret
+  precision: fp32
+  output_variant: default
+
+cache:
+  root_dir: /maindisk/clement/beetle-attempt-04-20260912/cache/mascaret_e95e7ea15e039e78d74def101415e19d9a67ba80_dense_fp16
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null
