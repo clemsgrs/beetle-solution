@@ -17,7 +17,7 @@ dependencies = [
   "Pillow>=10,<12",
   "PyYAML>=6,<7",
   "slide2vec[fm]==5.8.2",
-  "soma-pathology @ git+https://github.com/clemsgrs/soma.git@4a3d6c84f9a3dc2832e585c6884a95d14a0f79bc",
+  "soma-pathology @ git+https://github.com/clemsgrs/soma.git@eb5470bb846d0f0bd8bb40c4180f32eb84383c48",
   "torch==2.7.1",
   "torchvision==0.22.1",
 ]

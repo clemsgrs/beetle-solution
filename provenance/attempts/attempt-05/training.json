@@ -1,0 +1,8 @@
+{
+  "recorded_at": "2026-09-21T17:58:20+00:00",
+  "run_dir": "/maindisk/clement/beetle-attempt-05-20260919/runs/experiments/dataset-genbio-pathfm-slide-segmentation_13c3b5cf4132/runs/attempt-05-genbio-pathfm-20260919",
+  "soma": {
+    "commit": "eb5470bb846d0f0bd8bb40c4180f32eb84383c48",
+    "version": "1.11.2"
+  }
+}
