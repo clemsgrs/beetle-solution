@@ -1,0 +1,16 @@
+{
+  "tune/mean_dice_mean": 0.8507393360137939,
+  "tune/mean_dice_std": 0.012796485888947608,
+  "tune/dataset_global_mean_dice_mean": 0.8849714994430542,
+  "tune/dataset_global_mean_dice_std": 0.02821271059904199,
+  "tune/mean_iou_mean": 0.8338213324546814,
+  "tune/mean_iou_std": 0.011663152145731775,
+  "tune/dice_class_0_mean": 0.9781587839126586,
+  "tune/dice_class_0_std": 0.0030368820167844834,
+  "tune/dice_class_1_mean": 0.9004658460617065,
+  "tune/dice_class_1_std": 0.047902630557414914,
+  "tune/dice_class_2_mean": 0.8733607053756713,
+  "tune/dice_class_2_std": 0.021358862702689278,
+  "tune/dice_class_3_mean": 0.7879006624221802,
+  "tune/dice_class_3_std": 0.07390147078108411
+}

@@ -25,7 +25,6 @@ from typing import Callable, Sequence
 
 FOLD_IDS = tuple(range(5))
 SPLITS = ("tune", "test")
-PATCH_SIZE = 14  # Virchow2 ViT-H/14, the encoder behind every cached grid here.
 
 
 def read_split_sample_ids(roi_splits_csv: str | Path, *, split: str) -> dict[int, list[str]]:
@@ -91,8 +90,12 @@ def score_fold(
 
     config = load_config(run_dir / "config.yaml")
     masks = config.preprocessing.masks
+    from slide2vec.encoders.registry import encoder_registry
+
+    # The grid follows the run's encoder: patch 14 for Virchow2 and Mascaret, 16 for GenBio-PathFM.
     geometry = compute_dense_geometry(
-        target_size=int(config.preprocessing.requested_tile_size_px), patch_size=PATCH_SIZE
+        target_size=int(config.preprocessing.requested_tile_size_px),
+        patch_size=int(encoder_registry.info(config.encoder.name)["patch_size"]),
     )
     grid = feature_store.load(records[0].sample_id)
     if tuple(grid.shape[-2:]) != tuple(geometry.grid_shape):
