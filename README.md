@@ -88,6 +88,8 @@ python -m beetle extract --work-dir /path/to/work
 python -m beetle train --attempt configs/attempts/attempt-01.yaml
 ```
 
+`curate` also writes `splits_cv.csv`, classic five-fold cross-validation with no test fold: model k trains on four folds and selects its checkpoint on fold k+1. Attempt 06 uses it and reports mean tune Dice. To add it to an existing manifest, run `python -m beetle curate --cv-from <manifest>/splits.csv`.
+
 `train` and `infer` write a record of the attempt to `provenance/attempts/<name>/`. A recording failure does not stop a run.
 
 For each submitted attempt: tag the commit (`attempt-NN`), attach the five decoder checkpoints and the resolved config to a GitHub release, and add a row to the attempts table.

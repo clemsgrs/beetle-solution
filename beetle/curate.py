@@ -4,6 +4,10 @@ One row per development WSI pairs the slide with its annotation raster; soma sam
 ROIs from these slides at train time. Splits preserve BEETLE's predefined patient
 folds: for fold ``k``, a slide whose ``validation_fold == k`` is ``test``,
 ``== (k+1) % n_folds`` is ``tune``, else ``train``.
+
+``splits_cv.csv`` is classic five-fold cross-validation over the same rotation:
+model ``k`` trains on four organizer folds and selects its checkpoint on fold
+``(k+1) % n_folds``, the same tune fold as before. There is no test fold.
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from PIL import Image
 from beetle.contract import NUM_FOLDS, PIXEL_MAPPING
 from soma.curation.manifest import CuratedManifest, write_manifest
 
+CV_SPLITS = "splits_cv.csv"
 FULL_COHORT_SLIDES = 587
 FULL_COHORT_PATIENTS = 527
 
@@ -136,6 +141,50 @@ def build_split_rows(dataset_rows: list[dict]) -> list[dict]:
     return split_rows
 
 
+def cv_split_rows(split_rows: list[dict]) -> list[dict]:
+    """Classic five-fold CV from the nested rotation: no test fold; model k tunes on
+    fold k+1 as before and trains on the other four."""
+    return [
+        {**row, "split": "train" if row["split"] == "test" else row["split"]}
+        for row in split_rows
+    ]
+
+
+def validate_cv_splits(split_rows: list[dict]) -> None:
+    """Require train/tune only, every slide in every fold, and tune folds that partition."""
+    splits = {row["split"] for row in split_rows}
+    if splits != {"train", "tune"}:
+        raise ValueError(f"CV splits must be train/tune only; found {sorted(splits)}.")
+    samples_by_fold: dict[int, set[str]] = defaultdict(set)
+    tune_folds_by_sample: dict[str, list[int]] = defaultdict(list)
+    for row in split_rows:
+        fold = int(row["fold"])
+        samples_by_fold[fold].add(row["sample_id"])
+        if row["split"] == "tune":
+            tune_folds_by_sample[row["sample_id"]].append(fold)
+    cohort = set().union(*samples_by_fold.values())
+    if any(samples != cohort for samples in samples_by_fold.values()):
+        raise ValueError("Every fold must list every slide.")
+    if set(tune_folds_by_sample) != cohort or any(
+        len(folds) != 1 for folds in tune_folds_by_sample.values()
+    ):
+        raise ValueError("Each slide must be tuned on by exactly one fold.")
+
+
+def write_cv_splits(splits_csv: str | Path) -> Path:
+    """Write ``splits_cv.csv`` beside a curated ``splits.csv``; return its path."""
+    splits_csv = Path(splits_csv)
+    with splits_csv.open(newline="", encoding="utf-8") as handle:
+        rows = cv_split_rows(list(csv.DictReader(handle)))
+    validate_cv_splits(rows)
+    out = splits_csv.with_name(CV_SPLITS)
+    with out.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+    return out
+
+
 def validate_cohort(dataset_rows: list[dict]) -> None:
     """Require the full cohort, the five organizer folds, and no patient-fold leak."""
     num_slides = len(dataset_rows)
@@ -206,6 +255,7 @@ def curate(
         split_rows=split_rows,
         summary=summary,
     )
+    write_cv_splits(Path(output_dir) / "splits.csv")
     print(f"Wrote slide manifest ({len(dataset_rows)} slides) to {output_dir}")
     return manifest
 
@@ -217,7 +267,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--beetle-root",
         type=Path,
-        required=True,
+        default=None,
         help="root that the overview CSV's relative paths resolve against",
     )
     parser.add_argument(
@@ -232,7 +282,19 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="output directory (default: <beetle-root>/curated_slide_manifest)",
     )
+    parser.add_argument(
+        "--cv-from",
+        type=Path,
+        default=None,
+        metavar="SPLITS_CSV",
+        help=f"only write {CV_SPLITS} beside an existing curated splits.csv",
+    )
     args = parser.parse_args(argv)
+    if args.cv_from is not None:
+        print(f"Wrote {write_cv_splits(args.cv_from)}")
+        return 0
+    if args.beetle_root is None:
+        parser.error("--beetle-root is required unless --cv-from is given")
     curate(
         args.overview_csv or (args.beetle_root / "data_overview.csv"),
         args.beetle_root,

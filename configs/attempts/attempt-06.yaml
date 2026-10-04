@@ -1,0 +1,18 @@
+# Attempt 06: Attempt 01 as classic five-fold cross-validation.
+# Model k trains on every organizer fold but k+1 and selects its checkpoint on fold
+# k+1, Attempt 01's tune fold. No fold is held out; the reported score is mean tune
+# Dice. Write the splits file with
+#   python -m beetle curate --cv-from data/beetle/curated_slide_manifest/splits.csv
+run:
+  output_root: data/beetle/runs/attempt-06
+  tags: [beetle, virchow2, attempt-06]
+
+data:
+  splits_csv: data/beetle/curated_slide_manifest/splits_cv.csv
+
+training:
+  roi_batch_sampling: uniform
+  class_request_ratios: null
+  # Soma requires a test split per fold; this lets the tune fold stand in for it.
+  # holdout_test (base config) then drops that test reporting, so tune is all that runs.
+  tune_is_test: true

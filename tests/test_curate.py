@@ -1,6 +1,16 @@
 import pytest
 
-from beetle.curate import build_split_rows, resolve_patient_id, validate_cohort
+import csv
+
+from beetle.curate import (
+    CV_SPLITS,
+    build_split_rows,
+    resolve_patient_id,
+    cv_split_rows,
+    validate_cohort,
+    validate_cv_splits,
+    write_cv_splits,
+)
 
 
 def _dataset_row(sample_id, patient_id, fold):
@@ -53,3 +63,44 @@ def test_resolve_patient_id_prefers_released_then_derives():
     )
     with pytest.raises(ValueError, match="Cannot recover"):
         resolve_patient_id({"patient_id": "", "source": "unknown", "name": "slide"})
+
+
+def test_cv_layout_keeps_tune_and_trains_on_the_rest():
+    rows = [_dataset_row(f"s{fold}", f"p{fold}", fold) for fold in range(5)]
+    nested = build_split_rows(rows)
+    cv = cv_split_rows(nested)
+    validate_cv_splits(cv)
+    for before, after in zip(nested, cv):
+        assert after["sample_id"] == before["sample_id"]
+        assert after["fold"] == before["fold"]
+        assert after["split"] == ("tune" if before["split"] == "tune" else "train")
+
+
+def test_validate_cv_splits_rejects_leftover_test_and_overlapping_tunes():
+    rows = [_dataset_row(f"s{fold}", f"p{fold}", fold) for fold in range(5)]
+    nested = build_split_rows(rows)
+    with pytest.raises(ValueError, match="train/tune only"):
+        validate_cv_splits(nested)
+    overlapping = [
+        {**row, "split": "tune"} if row["sample_id"] == "s0" else row
+        for row in cv_split_rows(nested)
+    ]
+    with pytest.raises(ValueError, match="exactly one fold"):
+        validate_cv_splits(overlapping)
+
+
+def test_write_cv_splits_writes_beside_the_curated_splits(tmp_path):
+    rows = [_dataset_row(f"s{fold}", f"p{fold}", fold) for fold in range(5)]
+    splits_csv = tmp_path / "splits.csv"
+    with splits_csv.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["sample_id", "split", "fold"])
+        writer.writeheader()
+        writer.writerows(build_split_rows(rows))
+
+    out = write_cv_splits(splits_csv)
+
+    assert out == tmp_path / CV_SPLITS
+    with out.open(newline="") as handle:
+        written = list(csv.DictReader(handle))
+    assert [row["split"] for row in written].count("tune") == 5
+    assert [row["split"] for row in written].count("train") == 20
