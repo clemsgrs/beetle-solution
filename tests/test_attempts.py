@@ -44,6 +44,48 @@ def test_attempt_02_changes_only_decoder_depth_in_the_scientific_protocol():
     assert attempt_02 == attempt_01
 
 
+def test_attempt_06_changes_only_the_training_folds():
+    attempt_01 = asdict(load_attempt_config("configs/attempts/attempt-01.yaml"))
+    attempt_06 = asdict(load_attempt_config("configs/attempts/attempt-06.yaml"))
+
+    assert attempt_06["splits_csv"].endswith("curated_slide_manifest/splits_cv.csv")
+    assert attempt_06["training"]["checkpoint_selection"] == "best"
+    assert attempt_06["training"]["tune_is_test"] is True
+    assert attempt_06["evaluation"]["holdout_test"] is True
+
+    attempt_01["splits_csv"] = attempt_06["splits_csv"]
+    attempt_01["training"]["tune_is_test"] = True
+    attempt_01["output_root"] = "data/beetle/runs/attempt-06"
+    attempt_01["tags"] = ["beetle", "virchow2", "attempt-06"]
+    assert attempt_06 == attempt_01
+
+
+def test_soma_trains_four_folds_and_tunes_on_the_fifth(tmp_path):
+    from soma.dataset import SegmentationManifest, Splits
+
+    from beetle.curate import build_split_rows, cv_split_rows
+
+    dataset_csv = tmp_path / "dataset.csv"
+    lines = ["sample_id,image_path,label_mask_path,patient_id"]
+    lines += [f"s{fold},s{fold}.tif,s{fold}_mask.tif,p{fold}" for fold in range(5)]
+    dataset_csv.write_text("\n".join(lines) + "\n")
+    splits_csv = tmp_path / "splits.csv"
+    rows = build_split_rows(
+        [{"sample_id": f"s{fold}", "validation_fold": f"fold{fold}"} for fold in range(5)]
+    )
+    splits_csv.write_text(
+        "sample_id,split,fold\n"
+        + "".join(f"{r['sample_id']},{r['split']},{r['fold']}\n" for r in cv_split_rows(rows))
+    )
+
+    folds = Splits(splits_csv, SegmentationManifest(dataset_csv), tune_is_test=True).folds
+
+    for k, fold in enumerate(folds):
+        tune = f"s{(k + 1) % 5}"
+        assert fold.tune == (tune,)
+        assert sorted(fold.train) == sorted(f"s{j}" for j in range(5) if f"s{j}" != tune)
+
+
 def test_attempt_02_locks_the_verified_attempt_01_cache_identity():
     lock = json.loads(
         Path("configs/attempts/attempt-02-cache-lock.json").read_text(encoding="utf-8")
