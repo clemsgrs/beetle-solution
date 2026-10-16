@@ -27,11 +27,13 @@ uv sync
 uv run pytest -q
 ```
 
-Virchow2 is gated. Request access on its model page. Then download the exact revision named in `configs/base.yaml`.
+Virchow2 is gated. Request access on its model page. The reference encoder revision is recorded in `configs/base.yaml`; see the [inference guide](docs/inference.md#virchow2-access) for authentication and loading behavior.
 
 The `curate`, `extract`, and `train` commands run from a repository checkout: they read `configs/` and write `provenance/`. `infer` and `slide-predict` only need a run directory, so they also work from a plain package install.
 
 ## Inference
+
+For your own slides, follow [Segmentation on new slides](docs/inference.md): installation, model downloads, tissue/ROI masks, the inference command, and output interpretation.
 
 To reproduce a submission, you do not need to train. Download the attempt's release assets and arrange them as a run directory:
 
